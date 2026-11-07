@@ -18,7 +18,7 @@ st.sidebar.markdown("### Apariencia")
 tema_elegido = st.sidebar.radio("Modo de pantalla", ["Claro ☀️", "Oscuro 🌙"], index=0)
 
 # -----------------------------------------------------------------------------
-# 2. DEFINICIÓN DE ESTILOS CSS SEGÚN TEMA
+# 2. DEFINICIÓN DE ESTILOS CSS
 # -----------------------------------------------------------------------------
 if tema_elegido == "Oscuro 🌙":
     bg_app = "#0F172A"
@@ -79,20 +79,6 @@ st.markdown(f"""
         border-radius: 8px !important;
     }}
 
-    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {{
-        background-color: {input_bg} !important;
-        color: {input_text} !important;
-    }}
-
-    li[role="option"] {{
-        background-color: {input_bg} !important;
-        color: {input_text} !important;
-    }}
-
-    li[role="option"]:hover {{
-        background-color: {card_border} !important;
-    }}
-
     .brand-header {{
         font-family: 'Cinzel', serif !important;
         font-size: 2.5rem;
@@ -117,13 +103,12 @@ st.markdown(f"""
         overflow: hidden;
         border: 1px solid {card_border};
         box-shadow: 0 4px 20px {shadow};
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: transform 0.2s ease;
         margin-bottom: 1.8rem;
     }}
 
     .destination-card:hover {{
         transform: translateY(-4px);
-        box-shadow: 0 12px 30px {shadow};
     }}
 
     .card-image-container {{
@@ -131,7 +116,6 @@ st.markdown(f"""
         height: 180px;
         background-size: cover;
         background-position: center;
-        position: relative;
     }}
 
     .card-content {{
@@ -175,11 +159,6 @@ st.markdown(f"""
         font-size: 0.85rem;
         letter-spacing: 0.5px;
         margin-top: 1rem;
-        transition: background-color 0.2s;
-    }}
-
-    .booking-btn:hover {{
-        background-color: {btn_hover} !important;
     }}
 
     .live-indicator {{
@@ -189,7 +168,6 @@ st.markdown(f"""
         font-size: 0.75rem;
         color: {price_color} !important;
         font-weight: 600;
-        letter-spacing: 0.5px;
     }}
 
     .dot {{
@@ -202,64 +180,47 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. BASE DE DATOS MUNDIAL COMPLETA
+# 3. BASE DE DATOS GLOBAL DE PAÍSES Y REGIONES DEL MUNDO
 # -----------------------------------------------------------------------------
+CATALOGO_MUNDIAL_COMPLETO = {
+    "España 🇪🇸": {"lat": 40.4168, "lon": -3.7038, "regiones": ["Madrid & Centro", "Cataluña & Costa Brava", "Andalucía & Costa del Sol", "Islas Baleares", "Islas Canarias", "País Vasco & Norte"]},
+    "Italia 🇮🇹": {"lat": 41.9028, "lon": 12.4964, "regiones": ["Roma & Lazio", "Toscana & Florencia", "Lombardía & Milán", "Costa Amalfitana & Nápoles", "Sicilia", "Cerdeña"]},
+    "Francia 🇫🇷": {"lat": 48.8566, "lon": 2.3522, "regiones": ["París & Isla de Francia", "Costa Azul & Niza", "Provenza", "Alsacia", "Bretaña & Normandía"]},
+    "Japón 🇯🇵": {"lat": 35.6762, "lon": 139.6503, "regiones": ["Tokio & Kanto", "Kioto & Kansai", "Hokkaido & Nieve", "Okinawa & Playas Tropicales"]},
+    "México 🇲🇽": {"lat": 19.4326, "lon": -99.1332, "regiones": ["Riviera Maya & Cancún", "Ciudad de México", "Oaxaca & Costa Pacífico", "Baja California Sur"]},
+    "Estados Unidos 🇺🇸": {"lat": 37.0902, "lon": -95.7129, "regiones": ["Nueva York & Costa Este", "California & Costa Oeste", "Florida & Miami", "Hawái", "Las Vegas & Desiertos"]},
+    "Rusia / Cáucaso 🇷🇺": {"lat": 42.9849, "lon": 47.5046, "regiones": ["Daguestán & Montañas", "Moscú & Anillo de Oro", "San Petersburgo", "Sochi & Mar Negro"]},
+    "Tailandia 🇹🇭": {"lat": 13.7563, "lon": 100.5018, "regiones": ["Bangkok & Centro", "Phuket & Islas del Sur", "Chiang Mai & Norte"]},
+    "Indonesia 🇮🇩": {"lat": -0.7893, "lon": 113.9213, "regiones": ["Bali & Lombok", "Yakarta & Java", "Islas Komodo"]},
+    "Egipto 🇪🇬": {"lat": 26.8206, "lon": 30.8025, "regiones": ["El Cairo & Pirámides", "Mar Rojo & Sharm el-Sheikh", "Luxor & Nilas"]},
+    "Islandia 🇮🇸": {"lat": 64.1466, "lon": -21.9426, "regiones": ["Reikiavik & Círculo Dorado", "Fjordos del Sur", "Norte & Auroras"]},
+    "Brasil 🇧🇷": {"lat": -14.2350, "lon": -51.9253, "regiones": ["Río de Janeiro", "Bahía & Noreste", "Amazonia"]},
+    "Australia 🇦🇺": {"lat": -25.2744, "lon": 133.7751, "regiones": ["Sídney & Nueva Gales", "Queensland & Gran Barrera", "Melbourne & Victoria"]},
+    "Sudáfrica 🇿🇦": {"lat": -30.5595, "lon": 22.9375, "regiones": ["Ciudad del Cabo", "Parque Kruger & Safaris", "Ruta del Jardín"]}
+}
+
 ORIGENES_GLOBALES = {
     "Europa": {
         "España": ["Madrid (MAD)", "Barcelona (BCN)", "Valencia (VLC)", "Málaga (AGP)", "Sevilla (SVQ)"],
-        "Francia": ["París (CDG)", "Niza (NCE)", "Marsella (MRS)"],
-        "Alemania": ["Fráncfort (FRA)", "Múnich (MUC)", "Berlín (BER)"],
-        "Reino Unido": ["Londres (LHR)", "Mánchester (MAN)"],
-        "Italia": ["Roma (FCO)", "Milán (MXP)", "Venecia (VCE)"]
+        "Francia": ["París (CDG)", "Niza (NCE)"],
+        "Alemania": ["Fráncfort (FRA)", "Berlín (BER)"],
+        "Reino Unido": ["Londres (LHR)"],
+        "Italia": ["Roma (FCO)", "Milán (MXP)"]
     },
     "América": {
-        "Estados Unidos": ["Nueva York (JFK)", "Los Ángeles (LAX)", "Miami (MIA)"],
-        "México": ["Ciudad de México (MEX)", "Cancún (CUN)"],
-        "Colombia": ["Bogotá (BOG)", "Medellín (MDE)"],
-        "Argentina": ["Buenos Aires (EZE)"]
-    },
-    "Asia & Oriente": {
-        "Japón": ["Tokio (HND)", "Osaka (KIX)"],
-        "Emiratos Árabes": ["Dubái (DXB)"],
-        "Tailandia": ["Bangkok (BKK)"]
+        "Estados Unidos": ["Nueva York (JFK)", "Miami (MIA)"],
+        "México": ["Ciudad de México (MEX)", "Cancún (CUN)"]
     }
 }
 
-REGIONES_DESTINO = [
-    "Cualquier rincón del mundo",
-    "Caribe & Playas Tropicales",
-    "Cáucaso & Daguestán",
-    "Sudeste Asiático",
-    "Capitales Europeas",
-    "Oriente Medio & Desierto",
-    "Nórdicos & Auroras Boreales",
-    "Islas del Mediterráneo",
-    "Búsqueda por destino exacto..."
-]
-
-DATA_DESTINOS_BASE = [
-    {"destino": "Roma", "region": "Capitales Europeas", "pais": "Italia", "precio_base": 34, "duracion": "3 días", "dias_num": 3, "lat": 41.9028, "lon": 12.4964, "tipo": "Directo", "code": "FCO", "rating": 9.5, "img": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Oporto", "region": "Capitales Europeas", "pais": "Portugal", "precio_base": 22, "duracion": "3 días", "dias_num": 3, "lat": 41.1579, "lon": -8.6291, "tipo": "Directo", "code": "OPO", "rating": 9.2, "img": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Cancún", "region": "Caribe & Playas Tropicales", "pais": "México", "precio_base": 340, "duracion": "7 días", "dias_num": 7, "lat": 21.1619, "lon": -86.8515, "tipo": "1 escala", "code": "CUN", "rating": 8.8, "img": "https://images.unsplash.com/photo-1510097467424-192d713be8b2?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Majachkalá", "region": "Cáucaso & Daguestán", "pais": "Rusia / Cáucaso", "precio_base": 195, "duracion": "5 días", "dias_num": 5, "lat": 42.9849, "lon": 47.5046, "tipo": "1 escala", "code": "MCX", "rating": 8.9, "img": "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Bangkok", "region": "Sudeste Asiático", "pais": "Tailandia", "precio_base": 460, "duracion": "10 días", "dias_num": 10, "lat": 13.7563, "lon": 100.5018, "tipo": "1 escala", "code": "BKK", "rating": 9.6, "img": "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Dubái", "region": "Oriente Medio & Desierto", "pais": "EAU", "precio_base": 220, "duracion": "4 días", "dias_num": 4, "lat": 25.2048, "lon": 55.2708, "tipo": "Directo", "code": "DXB", "rating": 8.7, "img": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Reikiavik", "region": "Nórdicos & Auroras Boreales", "pais": "Islandia", "precio_base": 125, "duracion": "4 días", "dias_num": 4, "lat": 64.1466, "lon": -21.9426, "tipo": "Directo", "code": "KEF", "rating": 9.4, "img": "https://images.unsplash.com/photo-1504893524553-b855bce32c67?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Ibiza", "region": "Islas del Mediterráneo", "pais": "España", "precio_base": 19, "duracion": "3 días", "dias_num": 3, "lat": 38.9067, "lon": 1.4206, "tipo": "Directo", "code": "IBZ", "rating": 8.5, "img": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Tokio", "region": "Sudeste Asiático", "pais": "Japón", "precio_base": 580, "duracion": "10 días", "dias_num": 10, "lat": 35.6762, "lon": 139.6503, "tipo": "1 escala", "code": "HND", "rating": 9.8, "img": "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Ciudad del Cabo", "region": "Cualquier rincón del mundo", "pais": "Sudáfrica", "precio_base": 490, "duracion": "9 días", "dias_num": 9, "lat": -33.9249, "lon": 18.4241, "tipo": "1 escala", "code": "CPT", "rating": 9.3, "img": "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Sídney", "region": "Cualquier rincón del mundo", "pais": "Australia", "precio_base": 890, "duracion": "12 días", "dias_num": 12, "lat": -33.8688, "lon": 151.2093, "tipo": "2 escalas", "code": "SYD", "rating": 9.1, "img": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Río de Janeiro", "region": "Caribe & Playas Tropicales", "pais": "Brasil", "precio_base": 510, "duracion": "8 días", "dias_num": 8, "lat": -22.9068, "lon": -43.1729, "tipo": "1 escala", "code": "GIG", "rating": 8.9, "img": "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=800&auto=format&fit=crop"}
-]
-
 # -----------------------------------------------------------------------------
-# 4. GEOCODIFICACIÓN & BÚSQUEDA EN TIEMPO REAL
+# 4. GEOCODIFICACIÓN MUNDIAL DINÁMICA DE CUALQUIER PAÍS O LUGAR
 # -----------------------------------------------------------------------------
 @st.cache_data(ttl=86400)
 def obtener_coordenadas_lugar(nombre_lugar):
     try:
         url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(nombre_lugar)}&format=json&limit=1"
-        headers = {"User-Agent": "VagabondApp/5.0"}
+        headers = {"User-Agent": "VagabondAppGlobal/6.0"}
         response = httpx.get(url, headers=headers, timeout=6.0)
         data = response.json()
         if data:
@@ -298,125 +259,110 @@ def buscar_vuelo_google_flights_real(origen, destino_code):
     return None
 
 # -----------------------------------------------------------------------------
-# 5. CONTROLES DE BARRA LATERAL
+# 5. CONTROLES Y BARRA LATERAL
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Configuración de búsqueda")
 
 continente = st.sidebar.selectbox("Región de salida", list(ORIGENES_GLOBALES.keys()))
-pais = st.sidebar.selectbox("País", list(ORIGENES_GLOBALES[continente].keys()))
-ciudad_origen = st.sidebar.selectbox("Aeropuerto", ORIGENES_GLOBALES[continente][pais])
+pais_salida = st.sidebar.selectbox("País de salida", list(ORIGENES_GLOBALES[continente].keys()))
+ciudad_origen = st.sidebar.selectbox("Aeropuerto de salida", ORIGENES_GLOBALES[continente][pais_salida])
 
 codigo_iata = ciudad_origen.split("(")[-1].replace(")", "").strip() if "(" in ciudad_origen else "MAD"
 
 st.sidebar.markdown("---")
-region_filtro = st.sidebar.selectbox("Filtro de Destino", REGIONES_DESTINO)
-
-destino_busqueda = ""
-if region_filtro == "Búsqueda por destino exacto...":
-    destino_busqueda = st.sidebar.text_input("Escribe cualquier ciudad o territorio mundial:", "Daguestán")
-
-st.sidebar.markdown("---")
-duracion_filtro = st.sidebar.selectbox(
-    "Duración del viaje",
-    ["Cualquier duración", "Escapada rápida (3-4 días)", "Semana completa (5-8 días)", "Gran viaje (+8 días)"]
-)
-
-st.sidebar.markdown("---")
-presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 3000, 650, step=20)
-
-# -----------------------------------------------------------------------------
-# 6. PROCESAMIENTO GENERAL
-# -----------------------------------------------------------------------------
-destinos_a_procesar = DATA_DESTINOS_BASE.copy()
-
-if region_filtro == "Búsqueda por destino exacto..." and destino_busqueda.strip():
-    lat_geo, lon_geo = obtener_coordenadas_lugar(destino_busqueda)
-    destino_personalizado = {
-        "destino": destino_busqueda.capitalize(),
-        "region": "Búsqueda Personalizada",
-        "pais": "Global",
-        "precio_base": 180,
-        "duracion": "5 días",
-        "dias_num": 5,
-        "lat": lat_geo,
-        "lon": lon_geo,
-        "tipo": "Directo / 1 escala",
-        "code": destino_busqueda.upper()[:3],
-        "rating": 9.0,
-        "img": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=800&auto=format&fit=crop"
-    }
-    destinos_a_procesar.insert(0, destino_personalizado)
+presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 3000, 750, step=20)
 
 # Header
 st.markdown('<div class="brand-header">V A G A B O N D</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="brand-sub">Explorador Global de Vuelos desde <b>{ciudad_origen}</b></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="brand-sub">Explorador Mundial de Vuelos desde <b>{ciudad_origen}</b></div>', unsafe_allow_html=True)
 
-if "SERPAPI_KEY" in st.secrets:
-    st.markdown('<div class="live-indicator"><div class="dot"></div> Datos en vivo conectados a Google Flights API</div>', unsafe_allow_html=True)
+# -----------------------------------------------------------------------------
+# 6. PASO 1: SELECCIÓN GLOBAL EN EL MAPA DE CUALQUIER PAÍS DEL MUNDO
+# -----------------------------------------------------------------------------
+st.markdown("### 1. Selecciona cualquier País o Territorio del Mundo")
 
-st.write("")
+df_paises_list = []
+for pais, info in CATALOGO_MUNDIAL_COMPLETO.items():
+    df_paises_list.append({"País": pais, "lat": info["lat"], "lon": info["lon"]})
 
-# Calcular precios y ratios de calidad-precio
+df_mapa_global = pd.DataFrame(df_paises_list)
+st.map(df_mapa_global[["lat", "lon"]], zoom=1)
+
+col_sel1, col_sel2 = st.columns([1, 1])
+with col_sel1:
+    pais_destino_elegido = st.selectbox(
+        "🌍 Elige el País de Destino del mapa:",
+        list(CATALOGO_MUNDIAL_COMPLETO.keys()) + ["🔍 Escribir cualquier otro país/territorio libre..."]
+    )
+
+pais_final = pais_destino_elegido
+if pais_destino_elegido == "🔍 Escribir cualquier otro país/territorio libre...":
+    with col_sel2:
+        pais_libre = st.text_input("Escribe cualquier país o isla del planeta:", "Nueva Zelanda")
+        if pais_libre:
+            pais_final = pais_libre.capitalize()
+
+# -----------------------------------------------------------------------------
+# 7. PASO 2: PREGUNTAR POR LAS REGIONES ESPECÍFICAS DE ESE PAÍS
+# -----------------------------------------------------------------------------
+st.markdown("---")
+st.markdown(f"### 2. ¿Qué región o zona quieres visitar en **{pais_final}**?")
+
+regiones_disponibles = ["🔥 Ver todo el país (Todas las regiones)"]
+if pais_final in CATALOGO_MUNDIAL_COMPLETO:
+    regiones_disponibles.extend(CATALOGO_MUNDIAL_COMPLETO[pais_final]["regiones"])
+else:
+    regiones_disponibles.extend(["Zona Norte / Capital", "Zona Sur / Costera", "Islas & Naturaleza"])
+
+region_seleccionada = st.radio("Selecciona la región objetivo:", regiones_disponibles, horizontal=True)
+
+# -----------------------------------------------------------------------------
+# 8. BÚSQUEDA Y GENERACIÓN DE OFERTAS EN TIEMPO REAL
+# -----------------------------------------------------------------------------
+st.markdown("---")
+st.markdown(f"## ✈️ Escapadas Disponibles para {pais_final} ({region_seleccionada})")
+
+lat_pais, lon_pais = obtener_coordenadas_lugar(pais_final)
 fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
 fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
 
-vuelos_procesados = []
-for item in destinos_a_procesar:
-    item_copy = item.copy()
-    precio_real = buscar_vuelo_google_flights_real(codigo_iata, item["code"])
-    precio_final = precio_real if precio_real else item["precio_base"]
-    item_copy["precio"] = precio_final
+rutas_generadas = []
+if pais_final in CATALOGO_MUNDIAL_COMPLETO and region_seleccionada.startswith("🔥"):
+    lista_regiones_procesar = CATALOGO_MUNDIAL_COMPLETO[pais_final]["regiones"]
+else:
+    lista_regiones_procesar = [region_seleccionada]
+
+for idx, reg in enumerate(lista_regiones_procesar):
+    precio_base_est = 45 + (idx * 30) if "Europa" in continente else 380 + (idx * 50)
+    precio_real = buscar_vuelo_google_flights_real(codigo_iata, pais_final[:3].upper())
+    precio_final = precio_real if precio_real else precio_base_est
     
-    # Algoritmo de Calidad-Precio (Rating sobre precio ajustado por escalas)
-    mult_directo = 1.25 if item["tipo"] == "Directo" else 1.0
-    item_copy["score_cp"] = round(((item["rating"] * 100) * mult_directo) / precio_final, 2)
-    
-    item_copy["url_reserva"] = f"https://www.google.com/travel/flights?q=Flights%20to%20{urllib.parse.quote(item['destino'])}%20from%20{codigo_iata}%20on%20{fecha_ida}%20through%20{fecha_vuelta}"
-    vuelos_procesados.append(item_copy)
+    rutas_generadas.append({
+        "destino": f"{pais_final} ({reg.replace('🔥 Ver todo el país (Todas las regiones)', 'Todas')})",
+        "region": reg,
+        "pais": pais_final,
+        "precio": precio_final,
+        "duracion": "5 a 8 días",
+        "tipo": "Directo" if idx % 2 == 0 else "1 escala",
+        "rating": 9.0 + (idx * 0.1),
+        "score_cp": round((9.0 * 100) / precio_final, 2),
+        "url_reserva": f"https://www.google.com/travel/flights?q=Flights%20to%20{urllib.parse.quote(pais_final)}%20from%20{codigo_iata}%20on%20{fecha_ida}%20through%20{fecha_vuelta}",
+        "img": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=800&auto=format&fit=crop"
+    })
 
-df = pd.DataFrame(vuelos_procesados)
-
-# Aplicar Filtros
-df_filtrado = df[df["precio"] <= presupuesto_max]
-
-if region_filtro != "Cualquier rincón del mundo":
-    if region_filtro == "Búsqueda por destino exacto...":
-        if destino_busqueda:
-            df_filtrado = df_filtrado[
-                df_filtrado["destino"].str.lower().str.contains(destino_busqueda.lower()) |
-                df_filtrado["region"].str.lower().str.contains(destino_busqueda.lower()) |
-                df_filtrado["pais"].str.lower().str.contains(destino_busqueda.lower())
-            ]
-    else:
-        df_filtrado = df_filtrado[df_filtrado["region"] == region_filtro]
-
-if duracion_filtro == "Escapada rápida (3-4 días)":
-    df_filtrado = df_filtrado[df_filtrado["dias_num"].between(3, 4)]
-elif duracion_filtro == "Semana completa (5-8 días)":
-    df_filtrado = df_filtrado[df_filtrado["dias_num"].between(5, 8)]
-elif duracion_filtro == "Gran viaje (+8 días)":
-    df_filtrado = df_filtrado[df_filtrado["dias_num"] > 8]
+df_ofertas = pd.DataFrame(rutas_generadas)
+df_ofertas = df_ofertas[df_ofertas["precio"] <= presupuesto_max]
 
 # -----------------------------------------------------------------------------
-# 7. MAPA GLOBAL ESTABLE (ST.MAP)
+# 9. MOSTRAR 6 MÁS BARATOS Y 6 MEJORES CALIDAD-PRECIO
 # -----------------------------------------------------------------------------
-st.markdown("### 🗺️ Cobertura Global de Rutas")
-if not df_filtrado.empty:
-    st.map(df_filtrado[["lat", "lon"]], zoom=1)
-
-st.markdown("---")
-
-# -----------------------------------------------------------------------------
-# 8. PANEL 1: LOS 6 VUELOS MÁS BARATOS
-# -----------------------------------------------------------------------------
-st.markdown("## 📉 Los 6 Vuelos Más Baratos")
-
-if not df_filtrado.empty:
-    top_6_baratos = df_filtrado.sort_values(by="precio").head(6)
-    cols_baratos = st.columns(3)
-    for idx, (_, row) in enumerate(top_6_baratos.iterrows()):
-        col = cols_baratos[idx % 3]
+if not df_ofertas.empty:
+    st.markdown("### 📉 Vuelos Más Baratos")
+    top_baratos = df_ofertas.sort_values(by="precio").head(6)
+    cols_b = st.columns(3)
+    for idx, (_, row) in enumerate(top_baratos.iterrows()):
+        col = cols_b[idx % 3]
         with col:
             st.markdown(f"""
             <div class="destination-card">
@@ -432,21 +378,13 @@ if not df_filtrado.empty:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-else:
-    st.info("No hay rutas en este rango de precios.")
 
-st.markdown("---")
-
-# -----------------------------------------------------------------------------
-# 9. PANEL 2: LOS 6 MEJORES CALIDAD-PRECIO
-# -----------------------------------------------------------------------------
-st.markdown("## ✨ Los 6 Mejores en Calidad-Precio")
-
-if not df_filtrado.empty:
-    top_6_calidad = df_filtrado.sort_values(by="score_cp", ascending=False).head(6)
-    cols_calidad = st.columns(3)
-    for idx, (_, row) in enumerate(top_6_calidad.iterrows()):
-        col = cols_calidad[idx % 3]
+    st.markdown("---")
+    st.markdown("### ✨ Mejores en Calidad-Precio")
+    top_calidad = df_ofertas.sort_values(by="score_cp", ascending=False).head(6)
+    cols_c = st.columns(3)
+    for idx, (_, row) in enumerate(top_calidad.iterrows()):
+        col = cols_c[idx % 3]
         with col:
             st.markdown(f"""
             <div class="destination-card">
@@ -456,11 +394,11 @@ if not df_filtrado.empty:
                         <h3 class="card-title">{row['destino']}</h3>
                         <span class="price-tag">{row['precio']} €</span>
                     </div>
-                    <div class="card-region">{row['pais']} · Valoración {row['rating']}/10</div>
-                    <div style="font-size: 0.8rem; color: {text_sub} !important; margin-top: 6px;">Vuelo {row['tipo']} ({row['duracion']})</div>
+                    <div class="card-region">{row['pais']} · Rating {row['rating']:.1f}/10</div>
+                    <div style="font-size: 0.8rem; color: {text_sub} !important; margin-top: 6px;">Vuelo {row['tipo']}</div>
                     <a href="{row['url_reserva']}" target="_blank" class="booking-btn">RESERVAR EN GOOGLE FLIGHTS</a>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 else:
-    st.info("Ajusta el margen de presupuesto en la barra lateral para calcular ofertas de calidad-precio.")
+    st.info(f"No hay vuelos disponibles para {pais_final} dentro del presupuesto máximo de {presupuesto_max}€. Incrementa el límite en el menú lateral.")
