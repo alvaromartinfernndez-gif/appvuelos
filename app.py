@@ -33,37 +33,40 @@ else:
     price_color, hero_border, shadow = "#047857", "#047857", "rgba(0,0,0,.06)"
     input_bg, input_text = "#FFFFFF", "#0F172A"
 
-st.markdown(f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
-.stApp {{ background-color:{bg_app}!important; color:{text_main}!important; }}
-html,body,[class*="css"],.stMarkdown,p,span,div,h1,h2,h3,h4,h5,h6 {{ font-family:'Plus Jakarta Sans',sans-serif!important; color:{text_main}!important; }}
-section[data-testid="stSidebar"] {{ background-color:{bg_sidebar}!important; border-right:1px solid {card_border}!important; }}
-section[data-testid="stSidebar"] * {{ color:{text_main}!important; }}
-div[data-baseweb="select"]>div,div[data-baseweb="input"]>div,input {{ background-color:{input_bg}!important; color:{input_text}!important; border:1px solid {card_border}!important; border-radius:8px!important; }}
-div[data-baseweb="popover"],div[data-baseweb="menu"],ul[role="listbox"],li[role="option"] {{ background-color:{input_bg}!important; color:{input_text}!important; }}
-li[role="option"]:hover {{ background-color:{card_border}!important; }}
-.brand-header {{ font-family:'Cinzel',serif!important; font-size:2.5rem; font-weight:700; letter-spacing:2px; color:{text_main}!important; margin-bottom:.2rem; text-transform:uppercase; }}
-.brand-sub {{ font-size:.95rem; color:{text_sub}!important; margin-bottom:1.5rem; font-weight:300; letter-spacing:1px; }}
-.hero-badge {{ background-color:{hero_border}; color:{btn_text}!important; font-size:.75rem; font-weight:700; padding:4px 10px; border-radius:6px; letter-spacing:1px; text-transform:uppercase; display:inline-block; margin-bottom:.5rem; }}
-.destination-card {{ background-color:{card_bg}!important; border-radius:16px; overflow:hidden; border:1px solid {card_border}; box-shadow:0 4px 20px {shadow}; transition:transform .2s ease; margin-bottom:1.8rem; }}
-.destination-card:hover {{ transform:translateY(-4px); }}
-.card-image-container {{ width:100%; height:190px; background-size:cover; background-position:center; }}
-.card-content {{ padding:1.25rem; background-color:{card_bg}!important; }}
-.card-title {{ font-family:'Cinzel',serif!important; font-size:1.25rem; font-weight:700; color:{text_main}!important; margin:0; }}
-.card-region {{ font-size:.8rem; text-transform:uppercase; letter-spacing:1px; color:{text_sub}!important; font-weight:600; margin-top:2px; }}
-.price-tag {{ font-size:1.4rem; font-weight:700; color:{price_color}!important; }}
-.booking-btn {{ display:block; width:100%; text-align:center; background-color:{btn_bg}!important; color:{btn_text}!important; padding:.65rem 1rem; border-radius:8px; text-decoration:none!important; font-weight:600; font-size:.85rem; letter-spacing:.5px; margin-top:1rem; }}
-.booking-btn:hover {{ background-color:{btn_hover}!important; }}
-</style>
-""", unsafe_allow_html=True)
+st.markdown(
+    f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
+    .stApp {{ background-color:{bg_app}!important; color:{text_main}!important; }}
+    html,body,[class*="css"],.stMarkdown,p,span,div,h1,h2,h3,h4,h5,h6 {{ font-family:'Plus Jakarta Sans',sans-serif!important; color:{text_main}!important; }}
+    section[data-testid="stSidebar"] {{ background-color:{bg_sidebar}!important; border-right:1px solid {card_border}!important; }}
+    section[data-testid="stSidebar"] * {{ color:{text_main}!important; }}
+    div[data-baseweb="select"]>div,div[data-baseweb="input"]>div,input {{ background-color:{input_bg}!important; color:{input_text}!important; border:1px solid {card_border}!important; border-radius:8px!important; }}
+    div[data-baseweb="popover"],div[data-baseweb="menu"],ul[role="listbox"],li[role="option"] {{ background-color:{input_bg}!important; color:{input_text}!important; }}
+    li[role="option"]:hover {{ background-color:{card_border}!important; }}
+    .brand-header {{ font-family:'Cinzel',serif!important; font-size:2.5rem; font-weight:700; letter-spacing:2px; color:{text_main}!important; margin-bottom:.2rem; text-transform:uppercase; }}
+    .brand-sub {{ font-size:.95rem; color:{text_sub}!important; margin-bottom:1.5rem; font-weight:300; letter-spacing:1px; }}
+    .hero-badge {{ background-color:{hero_border}; color:{btn_text}!important; font-size:.75rem; font-weight:700; padding:4px 10px; border-radius:6px; letter-spacing:1px; text-transform:uppercase; display:inline-block; margin-bottom:10px; }}
+    .destination-card {{ background-color:{card_bg}!important; border-radius:16px; overflow:hidden; border:1px solid {card_border}; box-shadow:0 4px 20px {shadow}; transition:transform .2s ease; margin-bottom:1.8rem; }}
+    .destination-card:hover {{ transform:translateY(-4px); }}
+    .card-image-container {{ width:100%; height:190px; background-size:cover; background-position:center; }}
+    .card-content {{ padding:1.25rem; background-color:{card_bg}!important; }}
+    .card-title {{ font-family:'Cinzel',serif!important; font-size:1.25rem; font-weight:700; color:{text_main}!important; margin:0; }}
+    .card-region {{ font-size:.8rem; text-transform:uppercase; letter-spacing:1px; color:{text_sub}!important; font-weight:600; margin-top:2px; }}
+    .price-tag {{ font-size:1.4rem; font-weight:700; color:{price_color}!important; }}
+    .booking-btn {{ display:block; width:100%; text-align:center; background-color:{btn_bg}!important; color:{btn_text}!important; padding:.65rem 1rem; border-radius:8px; text-decoration:none!important; font-weight:600; font-size:.85rem; letter-spacing:.5px; margin-top:1rem; transition:background-color .2s; }}
+    .booking-btn:hover {{ background-color:{btn_hover}!important; }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # -----------------------------------------------------------------------------
 # 2. SERVICIOS: GEOCODIFICACIÓN Y SERPAPI
 # -----------------------------------------------------------------------------
 @st.cache_data(ttl=86400)
 def obtener_coordenadas_lugar(nombre_lugar):
-    """Busca coordenadas con Nominatim; devuelve un valor de reserva si no encuentra."""
+    """Busca coordenadas con Nominatim; devuelve un valor por defecto si no encuentra."""
     try:
         response = httpx.get(
             "https://nominatim.openstreetmap.org/search",
@@ -141,20 +144,26 @@ ORIGENES_GLOBALES = {
 }
 
 REGIONES_DESTINO = [
-    "Cualquier rincón del mundo", "Caribe & Playas Tropicales", "Cáucaso & Daguestán",
-    "Sudeste Asiático", "Capitales Europeas", "Oriente Medio & Desierto",
-    "Nórdicos & Auroras Boreales", "Islas del Mediterráneo", "Búsqueda por destino exacto...",
+    "Cualquier rincón del mundo",
+    "Caribe & Playas Tropicales",
+    "Cáucaso & Daguestán",
+    "Sudeste Asiático",
+    "Capitales Europeas",
+    "Oriente Medio & Desierto",
+    "Nórdicos & Auroras Boreales",
+    "Islas del Mediterráneo",
+    "Búsqueda por destino exacto...",
 ]
 
 DATA_DESTINOS_BASE = [
-    {"destino":"Roma","region":"Capitales Europeas","pais":"Italia","precio_base":34,"duracion":"3 días","dias_num":3,"lat":41.9028,"lon":12.4964,"tipo":"Directo","code":"FCO","img":"https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=800&auto=format&fit=crop"},
-    {"destino":"Oporto","region":"Capitales Europeas","pais":"Portugal","precio_base":22,"duracion":"3 días","dias_num":3,"lat":41.1579,"lon":-8.6291,"tipo":"Directo","code":"OPO","img":"https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=800&auto=format&fit=crop"},
-    {"destino":"Cancún","region":"Caribe & Playas Tropicales","pais":"México","precio_base":340,"duracion":"7 días","dias_num":7,"lat":21.1619,"lon":-86.8515,"tipo":"1 escala","code":"CUN","img":"https://images.unsplash.com/photo-1510097467424-192d713be8b2?q=80&w=800&auto=format&fit=crop"},
-    {"destino":"Majachkalá","region":"Cáucaso & Daguestán","pais":"Rusia / Cáucaso","precio_base":195,"duracion":"5 días","dias_num":5,"lat":42.9849,"lon":47.5046,"tipo":"1 escala","code":"MCX","img":"https://images.unsplash.com/photo-1516483638261-f4dbaf036963?q=80&w=800&auto=format&fit=crop"},
-    {"destino":"Bangkok","region":"Sudeste Asiático","pais":"Tailandia","precio_base":460,"duracion":"10 días","dias_num":10,"lat":13.7563,"lon":100.5018,"tipo":"1 escala","code":"BKK","img":"https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=800&auto=format&fit=crop"},
-    {"destino":"Dubái","region":"Oriente Medio & Desierto","pais":"EAU","precio_base":220,"duracion":"4 días","dias_num":4,"lat":25.2048,"lon":55.2708,"tipo":"Directo","code":"DXB","img":"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop"},
-    {"destino":"Reikiavik","region":"Nórdicos & Auroras Boreales","pais":"Islandia","precio_base":125,"duracion":"4 días","dias_num":4,"lat":64.1466,"lon":-21.9426,"tipo":"Directo","code":"KEF","img":"https://images.unsplash.com/photo-1504893524553-b855bce32c67?q=80&w=800&auto=format&fit=crop"},
-    {"destino":"Ibiza","region":"Islas del Mediterráneo","pais":"España","precio_base":19,"duracion":"3 días","dias_num":3,"lat":38.9067,"lon":1.4206,"tipo":"Directo","code":"IBZ","img":"https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Roma", "region": "Capitales Europeas", "pais": "Italia", "precio_base": 34, "duracion": "3 días", "dias_num": 3, "lat": 41.9028, "lon": 12.4964, "tipo": "Directo", "code": "FCO", "img": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Oporto", "region": "Capitales Europeas", "pais": "Portugal", "precio_base": 22, "duracion": "3 días", "dias_num": 3, "lat": 41.1579, "lon": -8.6291, "tipo": "Directo", "code": "OPO", "img": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Cancún", "region": "Caribe & Playas Tropicales", "pais": "México", "precio_base": 340, "duracion": "7 días", "dias_num": 7, "lat": 21.1619, "lon": -86.8515, "tipo": "1 escala", "code": "CUN", "img": "https://images.unsplash.com/photo-1510097467424-192d713be8b2?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Majachkalá", "region": "Cáucaso & Daguestán", "pais": "Rusia / Cáucaso", "precio_base": 195, "duracion": "5 días", "dias_num": 5, "lat": 42.9849, "lon": 47.5046, "tipo": "1 escala", "code": "MCX", "img": "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Bangkok", "region": "Sudeste Asiático", "pais": "Tailandia", "precio_base": 460, "duracion": "10 días", "dias_num": 10, "lat": 13.7563, "lon": 100.5018, "tipo": "1 escala", "code": "BKK", "img": "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Dubái", "region": "Oriente Medio & Desierto", "pais": "EAU", "precio_base": 220, "duracion": "4 días", "dias_num": 4, "lat": 25.2048, "lon": 55.2708, "tipo": "Directo", "code": "DXB", "img": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Reikiavik", "region": "Nórdicos & Auroras Boreales", "pais": "Islandia", "precio_base": 125, "duracion": "4 días", "dias_num": 4, "lat": 64.1466, "lon": -21.9426, "tipo": "Directo", "code": "KEF", "img": "https://images.unsplash.com/photo-1504893524553-b855bce32c67?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Ibiza", "region": "Islas del Mediterráneo", "pais": "España", "precio_base": 19, "duracion": "3 días", "dias_num": 3, "lat": 38.9067, "lon": 1.4206, "tipo": "Directo", "code": "IBZ", "img": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"},
 ]
 
 # -----------------------------------------------------------------------------
@@ -173,6 +182,7 @@ destino_busqueda = ""
 if region_filtro == "Búsqueda por destino exacto...":
     destino_busqueda = st.sidebar.text_input("Escribe cualquier ciudad o punto del planeta:", "Daguestán")
 
+st.sidebar.markdown("---")
 duracion_filtro = st.sidebar.selectbox(
     "Duración del viaje",
     ["Cualquier duración", "Escapada rápida (3-4 días)", "Semana completa (5-8 días)", "Gran viaje (+8 días)"],
@@ -186,18 +196,29 @@ serpapi_key = obtener_clave_serpapi()
 destinos_a_procesar = [item.copy() for item in DATA_DESTINOS_BASE]
 if region_filtro == "Búsqueda por destino exacto..." and destino_busqueda.strip():
     lat_geo, lon_geo = obtener_coordenadas_lugar(destino_busqueda.strip())
-    destinos_a_procesar.insert(0, {
-        "destino": destino_busqueda.strip().title(), "region": "Búsqueda Personalizada", "pais": "Global",
-        "precio_base": 150, "duracion": "5 días", "dias_num": 5, "lat": lat_geo, "lon": lon_geo,
-        "tipo": "Consultar disponibilidad", "code": "",
-        "img": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=800&auto=format&fit=crop",
-    })
+    destinos_a_procesar.insert(
+        0,
+        {
+            "destino": destino_busqueda.strip().title(),
+            "region": "Búsqueda Personalizada",
+            "pais": "Global",
+            "precio_base": 150,
+            "duracion": "5 días",
+            "dias_num": 5,
+            "lat": lat_geo,
+            "lon": lon_geo,
+            "tipo": "Consultar disponibilidad",
+            "code": "",
+            "img": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=800&auto=format&fit=crop",
+        },
+    )
 
 # -----------------------------------------------------------------------------
 # 5. BÚSQUEDA DE PRECIOS
 # -----------------------------------------------------------------------------
 st.markdown('<div class="brand-header">V A G A B O N D</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="brand-sub">Búsqueda desde <b>{html.escape(ciudad_origen)}</b> · tarifas sujetas a cambios</div>', unsafe_allow_html=True)
+
 if serpapi_key:
     st.caption("SerpApi está configurada: se consultan resultados de Google Flights a través de SerpApi. Verifica la tarifa antes de reservar.")
 else:
@@ -252,34 +273,40 @@ if not df_filtrado.empty:
     with hero_image:
         st.image(top["img"], use_container_width=True)
     with hero_details:
-        st.markdown(f"""
-        <div class="hero-badge">{html.escape(top['fuente_precio'])}</div>
-        <h2 style="font-family:'Cinzel',serif;margin:0">{html.escape(top['destino'])} ({html.escape(top['pais'])})</h2>
-        <p>Duración recomendada: {html.escape(top['duracion'])}</p>
-        <div style="font-size:2rem;font-weight:700;color:{price_color};margin:10px 0">Desde {top['precio']} €</div>
-        <a href="{html.escape(top['url_reserva'], quote=True)}" target="_blank" rel="noopener noreferrer" class="booking-btn">CONSULTAR EN GOOGLE FLIGHTS</a>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="hero-badge">{html.escape(top['fuente_precio'])}</div>
+            <h2 style="font-family:'Cinzel',serif;margin:0">{html.escape(top['destino'])} ({html.escape(top['pais'])})</h2>
+            <p>Duración recomendada: {html.escape(top['duracion'])}</p>
+            <div style="font-size:2rem;font-weight:700;color:{price_color};margin:10px 0">Desde {top['precio']} €</div>
+            <a href="{html.escape(top['url_reserva'], quote=True)}" target="_blank" rel="noopener noreferrer" class="booking-btn">CONSULTAR EN GOOGLE FLIGHTS</a>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown("---")
     st.markdown("### Escapadas encontradas")
     cols = st.columns(3)
     for index, (_, row) in enumerate(df_filtrado.iterrows()):
         with cols[index % 3]:
-            st.markdown(f"""
-            <div class="destination-card">
-                <div class="card-image-container" style="background-image:url('{html.escape(row['img'], quote=True)}')"></div>
-                <div class="card-content">
-                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-                        <h3 class="card-title">{html.escape(row['destino'])}</h3>
-                        <span class="price-tag">{row['precio']} €</span>
+            st.markdown(
+                f"""
+                <div class="destination-card">
+                    <div class="card-image-container" style="background-image:url('{html.escape(row['img'], quote=True)}')"></div>
+                    <div class="card-content">
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                            <h3 class="card-title">{html.escape(row['destino'])}</h3>
+                            <span class="price-tag">{row['precio']} €</span>
+                        </div>
+                        <div class="card-region">{html.escape(row['pais'])} · {html.escape(row['duracion'])}</div>
+                        <div style="font-size:.8rem;color:{text_sub};margin-top:6px">Vuelo {html.escape(row['tipo'])}</div>
+                        <div style="font-size:.72rem;color:{text_sub};margin-top:6px">{html.escape(row['fuente_precio'])}</div>
+                        <a href="{html.escape(row['url_reserva'], quote=True)}" target="_blank" rel="noopener noreferrer" class="booking-btn">VER EN GOOGLE FLIGHTS</a>
                     </div>
-                    <div class="card-region">{html.escape(row['pais'])} · {html.escape(row['duracion'])}</div>
-                    <div style="font-size:.8rem;color:{text_sub};margin-top:6px">Vuelo {html.escape(row['tipo'])}</div>
-                    <div style="font-size:.72rem;color:{text_sub};margin-top:6px">{html.escape(row['fuente_precio'])}</div>
-                    <a href="{html.escape(row['url_reserva'], quote=True)}" target="_blank" rel="noopener noreferrer" class="booking-btn">VER EN GOOGLE FLIGHTS</a>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """,
+                unsafe_allow_html=True,
+            )
 
     st.markdown("---")
     st.markdown("### Mapa de rutas globales")
