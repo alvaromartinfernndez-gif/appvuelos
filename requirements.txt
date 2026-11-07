@@ -1,4 +1,5 @@
 streamlit
 pandas
+fast-flights
 httpx
-numpy
+pydeck
