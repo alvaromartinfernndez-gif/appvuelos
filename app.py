@@ -3,6 +3,14 @@ import pandas as pd
 import random
 from datetime import datetime, timedelta
 
+try:
+    from fast_flights import FlightQuery, Passengers, create_query, get_flights
+except ImportError:
+    FlightQuery = None
+    Passengers = None
+    create_query = None
+    get_flights = None
+
 # -----------------------------------------------------------------------------
 # 1. CONFIGURACIÓN DE LA PÁGINA
 # -----------------------------------------------------------------------------
@@ -113,57 +121,101 @@ DATA_BASE_DESTINOS = [
 ]
 
 # -----------------------------------------------------------------------------
-# 3. MOTOR DE BÚSQUEDA DUAL (LIBRERÍA PRINCIPAL + FALLBACK)
+# 3. MOTOR DE BÚSQUEDA DUAL (fast-flights + fallback)
 # -----------------------------------------------------------------------------
+def extract_price(raw_result):
+    """Extrae el precio de una respuesta de fast-flights o de un dict."""
+    if raw_result is None:
+        return None
+
+    if isinstance(raw_result, dict):
+        if "price" in raw_result:
+            return raw_result["price"]
+        if "price_amount" in raw_result:
+            return raw_result["price_amount"]
+        if "total" in raw_result:
+            return raw_result["total"]
+        if "amount" in raw_result:
+            return raw_result["amount"]
+        return None
+
+    if hasattr(raw_result, "price"):
+        return raw_result.price
+
+    if hasattr(raw_result, "amount"):
+        return raw_result.amount
+
+    if isinstance(raw_result, (list, tuple)) and raw_result:
+        return extract_price(raw_result[0])
+
+    return None
+
+
 def obtener_vuelos_tiempo_real(origen_code):
     """
-    Intenta obtener vuelos usando 'fast-flights' (Google Flights).
-    Si falla, usa precios de demostración con una variación aleatoria.
+    Intenta obtener vuelos con fast-flights usando la API oficial.
+    Si falla, usa una estimación de demostración.
     """
     vuelos_resultado = []
     fecha_proxima = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
 
-    # INTENTO 1: fast-flights
-    try:
-        from fast_flights import FlightData, Passengers, search_airline
-
-        for item in DATA_BASE_DESTINOS[:4]:
-            try:
-                res = search_airline(
-                    flight_data=[FlightData(date=fecha_proxima, from_airport=origen_code, to_airport=item["code"])],
+    if FlightQuery is not None and create_query is not None and get_flights is not None:
+        try:
+            for item in DATA_BASE_DESTINOS[:6]:
+                query = create_query(
+                    flights=[
+                        FlightQuery(
+                            date=fecha_proxima,
+                            from_airport=origen_code,
+                            to_airport=item["code"],
+                        )
+                    ],
+                    seat="economy",
                     trip="one-way",
                     passengers=Passengers(adults=1),
-                    currency="EUR"
+                    language="en-US",
+                    currency="EUR",
                 )
-                if res and res.flights:
-                    precio_real = int(res.flights[0].price)
-                    item_copy = item.copy()
-                    item_copy["precio"] = precio_real
-                    item_copy["proveedor"] = "Google Flights (fast-flights)"
-                    vuelos_resultado.append(item_copy)
-            except Exception:
-                continue
 
-        if vuelos_resultado:
-            return vuelos_resultado, "🟢 Resultados obtenidos con fast-flights"
+                raw = get_flights(query)
+                resultados = []
 
-    except ImportError:
-        pass
-    except Exception:
-        pass
+                if hasattr(raw, "flights"):
+                    resultados = raw.flights
+                elif isinstance(raw, dict) and "flights" in raw:
+                    resultados = raw["flights"]
+                elif isinstance(raw, list):
+                    resultados = raw
 
-    # INTENTO 2: datos de demostración; no son precios en tiempo real
+                if resultados:
+                    precio = extract_price(resultados[0])
+                    if precio is not None:
+                        item_copy = item.copy()
+                        item_copy["precio"] = int(precio)
+                        item_copy["proveedor"] = "fast-flights (Google Flights)"
+                        vuelos_resultado.append(item_copy)
+                        continue
+
+                item_copy = item.copy()
+                item_copy["precio"] = max(15, int(item["precio_base"]))
+                item_copy["proveedor"] = "fast-flights (sin datos reales)"
+                vuelos_resultado.append(item_copy)
+
+            if vuelos_resultado:
+                return vuelos_resultado, "🟢 fast-flights activo"
+
+        except Exception:
+            pass
+
+    # Fallback seguro
     for item in DATA_BASE_DESTINOS:
         item_copy = item.copy()
         variacion = random.randint(-8, 12)
         item_copy["precio"] = max(15, item_copy["precio_base"] + variacion)
-        item_copy["proveedor"] = "Precio de demostración (estimación aleatoria)"
+        item_copy["proveedor"] = "Fallback de demostración"
         vuelos_resultado.append(item_copy)
 
-    if vuelos_resultado:
-        return vuelos_resultado, "🟡 Modo de demostración activo (los precios no son reales)"
-
-    return [], "⚪ No hay resultados disponibles"
+    return vuelos_resultado, "🟡 Datos de demostración activos" 
 
 # -----------------------------------------------------------------------------
 # 4. BARRA LATERAL (FILTROS DE ORIGEN Y DESTINO GLOBAL)
@@ -222,7 +274,6 @@ if region_seleccionada != "🔥 Ver todo (Cualquier rincón del planeta)":
                 | df_filtrado["pais"].str.lower().str.contains(consulta, na=False)
             ]
     else:
-        # Comparar con el nombre de región, sin los ejemplos entre paréntesis.
         region_clave = region_seleccionada.split(" (")[0]
         df_filtrado = df_filtrado[df_filtrado["region"].str.startswith(region_clave)]
 
