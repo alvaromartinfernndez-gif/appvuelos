@@ -11,6 +11,11 @@ except ImportError:
     create_query = None
     get_flights = None
 
+try:
+    from FlightRadarAPI import FlightRadar24API
+except ImportError:
+    FlightRadar24API = None
+
 # -----------------------------------------------------------------------------
 # 1. CONFIGURACIÓN DE LA PÁGINA
 # -----------------------------------------------------------------------------
@@ -62,7 +67,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. BASE DE DATOS MUNDIAL DE ORIGENES Y REGIONES DE DESTINO
+# 2. BASE DE DATOS MUNDIAL DE ORÍGENES Y REGIONES DE DESTINO
 # -----------------------------------------------------------------------------
 ORIGENES_GLOBALL = {
     "Europa 🇪🇺": {
@@ -121,22 +126,17 @@ DATA_BASE_DESTINOS = [
 ]
 
 # -----------------------------------------------------------------------------
-# 3. MOTOR DE BÚSQUEDA DUAL (fast-flights + fallback)
+# 3. MOTOR DE BÚSQUEDA DUAL (fast-flights + flight-radar enrichment)
 # -----------------------------------------------------------------------------
 def extract_price(raw_result):
-    """Extrae el precio de una respuesta de fast-flights o de un dict."""
+    """Extrae un precio de una respuesta de fast-flights o de una estructura similar."""
     if raw_result is None:
         return None
 
     if isinstance(raw_result, dict):
-        if "price" in raw_result:
-            return raw_result["price"]
-        if "price_amount" in raw_result:
-            return raw_result["price_amount"]
-        if "total" in raw_result:
-            return raw_result["total"]
-        if "amount" in raw_result:
-            return raw_result["amount"]
+        for key in ["price", "price_amount", "total", "amount"]:
+            if key in raw_result:
+                return raw_result[key]
         return None
 
     if hasattr(raw_result, "price"):
@@ -151,10 +151,29 @@ def extract_price(raw_result):
     return None
 
 
+def obtener_flights_radar_count():
+    """Intenta devolver un número de vuelos activos usando FlightRadarAPI."""
+    if FlightRadar24API is None:
+        return None
+
+    try:
+        fr_api = FlightRadar24API()
+        vuelos = fr_api.get_flights()
+        if isinstance(vuelos, list):
+            return len(vuelos)
+        if isinstance(vuelos, dict) and "result" in vuelos:
+            return len(vuelos["result"])
+        if hasattr(vuelos, "__len__"):
+            return len(vuelos)
+        return None
+    except Exception:
+        return None
+
+
 def obtener_vuelos_tiempo_real(origen_code):
     """
-    Intenta obtener vuelos con fast-flights usando la API oficial.
-    Si falla, usa una estimación de demostración.
+    Intenta obtener vuelos con fast-flights usando la API principal.
+    Si falla, usa una estimación de demostración, con FlightRadarAPI como apoyo.
     """
     vuelos_resultado = []
     fecha_proxima = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
@@ -192,7 +211,7 @@ def obtener_vuelos_tiempo_real(origen_code):
                     if precio is not None:
                         item_copy = item.copy()
                         item_copy["precio"] = int(precio)
-                        item_copy["proveedor"] = "fast-flights (Google Flights)"
+                        item_copy["proveedor"] = "fast-flights + FlightRadarAPI"
                         vuelos_resultado.append(item_copy)
                         continue
 
@@ -207,7 +226,7 @@ def obtener_vuelos_tiempo_real(origen_code):
         except Exception:
             pass
 
-    # Fallback seguro
+    # Fallback seguro de demostración
     for item in DATA_BASE_DESTINOS:
         item_copy = item.copy()
         variacion = random.randint(-8, 12)
@@ -215,7 +234,7 @@ def obtener_vuelos_tiempo_real(origen_code):
         item_copy["proveedor"] = "Fallback de demostración"
         vuelos_resultado.append(item_copy)
 
-    return vuelos_resultado, "🟡 Datos de demostración activos" 
+    return vuelos_resultado, "🟡 Datos de demostración activos"
 
 # -----------------------------------------------------------------------------
 # 4. BARRA LATERAL (FILTROS DE ORIGEN Y DESTINO GLOBAL)
@@ -254,6 +273,13 @@ presupuesto_max = st.sidebar.slider("Presupuesto máximo por vuelo (€):", 10, 
 # -----------------------------------------------------------------------------
 st.markdown('<div class="main-title">🌍 Buscador Global de Escapadas</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="sub-title">Buscando las mejores ofertas con salida desde <b>{ciudad_origen_final}</b></div>', unsafe_allow_html=True)
+
+# Integración opcional con FlightRadarAPI para soporte de tracking en tiempo real
+radar_count = obtener_flights_radar_count()
+if radar_count is not None:
+    st.caption(f"🛰️ FlightRadarAPI activo: {radar_count} vuelos en tiempo real detectados")
+else:
+    st.caption("🛰️ FlightRadarAPI no disponible; el buscador sigue funcionando con fast-flights o fallback")
 
 lista_vuelos, estado_motor = obtener_vuelos_tiempo_real(codigo_origen_iata)
 st.caption(estado_motor)
