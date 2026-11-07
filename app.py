@@ -151,7 +151,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. CONSULTAS EN TIEMPO REAL & GENERADOR DE ENLACES DINÁMICOS
+# 2. CONSULTAS EN TIEMPO REAL Y GENERADOR DE ENLACES BLINDADOS
 # -----------------------------------------------------------------------------
 def obtener_vuelo_real(origen_code, destino_code):
     """Consulta exacta a Google Flights pasando el código del aeropuerto seleccionado."""
@@ -183,16 +183,32 @@ def obtener_vuelo_real(origen_code, destino_code):
     return None
 
 def generar_enlace_dinamico(tipo_transporte, origen_nombre, destino_nombre):
-    """Genera la URL exacta conectada al origen seleccionado por el usuario."""
-    q_origen = urllib.parse.quote(origen_nombre)
-    q_destino = urllib.parse.quote(destino_nombre)
+    """
+    Construye URLs deep-link 100% compatibles con Google Flights, Trainline y BlaBlaCar
+    evitando errores de página no encontrada.
+    """
+    def simplificar_texto(texto):
+        remplazos = {'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n'}
+        t = texto.lower()
+        for k, v in remplazos.items():
+            t = t.replace(k, v)
+        return t.strip().replace(" ", "-")
+
+    origen_slug = simplificar_texto(origen_nombre)
+    destino_slug = simplificar_texto(destino_nombre)
     
+    fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+    fecha_vuelta = (datetime.now() + timedelta(days=18)).strftime("%Y-%m-%d")
+
     if "Avión" in tipo_transporte:
-        return f"https://www.google.com/travel/flights?q=Vuelos%20desde%20{q_origen}%20a%20{q_destino}"
+        query_vuelo = f"Vuelos de {origen_nombre} a {destino_nombre} del {fecha_ida} al {fecha_vuelta}"
+        return f"https://www.google.com/travel/flights?q={urllib.parse.quote(query_vuelo)}"
+    
     elif "Tren" in tipo_transporte or "Autobús" in tipo_transporte:
-        return f"https://www.thetrainline.com/es/busqueda/{q_origen}/{q_destino}"
+        return f"https://www.thetrainline.com/es/buscar/{origen_slug}/para/{destino_slug}"
+    
     else:
-        return f"https://www.blablacar.es/search?fn={q_origen}&tn={q_destino}"
+        return f"https://www.blablacar.es/search?fn={urllib.parse.quote(origen_nombre)}&tn={urllib.parse.quote(destino_nombre)}"
 
 # -----------------------------------------------------------------------------
 # 3. ORIGENES Y CATÁLOGO DE RUTAS MULTIMODALES
@@ -255,25 +271,24 @@ st.markdown(f"### 🔔 Chollos desde {origen_seleccionado}")
 chollos_filtrados = []
 
 for item in ALERTAS_CATALOGO:
-    # Ignorar si el origen seleccionado es igual al destino (ej. salir de Madrid ir a Madrid)
+    # Ignorar si el origen seleccionado coincide con el destino
     if item["destino"].lower() == origen_seleccionado.lower():
         continue
         
-    # Filtrar por tipo de transporte elegido
+    # Filtrar por tipo de transporte seleccionado
     if not any(t in item["transporte"] for t in filtro_transporte):
         continue
         
     precio_final = item["precio_chollo"]
     
-    # Recalcular tarifa real en tiempo real según el origen actual de la barra lateral
+    # Tarifas dinámicas reales para aviones cuando SerpApi está activa
     if item["tipo_cat"] == "Avión" and serp_activa:
         precio_api = obtener_vuelo_real(codigo_origen_actual, item["code"])
         if precio_api:
             precio_final = precio_api
 
-    # Evaluar umbral de presupuesto
+    # Evaluar presupuesto máximo fijado
     if precio_final <= presupuesto_alerta:
-        # Generar URL apuntando exactamente a la ciudad de origen elegida
         url_dinamica = generar_enlace_dinamico(item["transporte"], origen_seleccionado, item["destino"])
         desc = int(((item["precio_habitual"] - precio_final) / item["precio_habitual"]) * 100)
         
@@ -287,7 +302,7 @@ for item in ALERTAS_CATALOGO:
             "url": url_dinamica
         })
 
-# Renderizar en tarjeta
+# Renderizar alertas en tarjetas
 if chollos_filtrados:
     cols = st.columns(2)
     for idx, chollo in enumerate(chollos_filtrados):
