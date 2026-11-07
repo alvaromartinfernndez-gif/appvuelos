@@ -1,4 +1,5 @@
-import random
+import html
+import re
 import urllib.parse
 from datetime import datetime, timedelta
 
@@ -23,13 +24,13 @@ if tema_elegido == "Oscuro 🌙":
     bg_app, bg_sidebar, text_main, text_sub = "#0F172A", "#1E293B", "#F8FAFC", "#94A3B8"
     card_bg, card_border = "#1E293B", "#334155"
     btn_bg, btn_text, btn_hover = "#38BDF8", "#0F172A", "#0284C7"
-    price_color, hero_bg, hero_border, shadow = "#34D399", "#1E293B", "#38BDF8", "rgba(0,0,0,.4)"
+    price_color, hero_border, shadow = "#34D399", "#38BDF8", "rgba(0,0,0,.4)"
     input_bg, input_text = "#334155", "#F8FAFC"
 else:
     bg_app, bg_sidebar, text_main, text_sub = "#F8FAFC", "#FFFFFF", "#0F172A", "#475569"
     card_bg, card_border = "#FFFFFF", "#CBD5E1"
     btn_bg, btn_text, btn_hover = "#0F172A", "#FFFFFF", "#047857"
-    price_color, hero_bg, hero_border, shadow = "#047857", "#FFFFFF", "#047857", "rgba(0,0,0,.06)"
+    price_color, hero_border, shadow = "#047857", "#047857", "rgba(0,0,0,.06)"
     input_bg, input_text = "#FFFFFF", "#0F172A"
 
 st.markdown(f"""
@@ -44,9 +45,8 @@ div[data-baseweb="popover"],div[data-baseweb="menu"],ul[role="listbox"],li[role=
 li[role="option"]:hover {{ background-color:{card_border}!important; }}
 .brand-header {{ font-family:'Cinzel',serif!important; font-size:2.5rem; font-weight:700; letter-spacing:2px; color:{text_main}!important; margin-bottom:.2rem; text-transform:uppercase; }}
 .brand-sub {{ font-size:.95rem; color:{text_sub}!important; margin-bottom:1.5rem; font-weight:300; letter-spacing:1px; }}
-.hero-card {{ background-color:{hero_bg}!important; border-radius:16px; border:2px solid {hero_border}; padding:1.5rem; box-shadow:0 8px 30px {shadow}; margin-bottom:2rem; }}
 .hero-badge {{ background-color:{hero_border}; color:{btn_text}!important; font-size:.75rem; font-weight:700; padding:4px 10px; border-radius:6px; letter-spacing:1px; text-transform:uppercase; display:inline-block; margin-bottom:.5rem; }}
-.destination-card {{ background-color:{card_bg}!important; border-radius:16px; overflow:hidden; border:1px solid {card_border}; box-shadow:0 4px 20px {shadow}; margin-bottom:1.8rem; }}
+.destination-card {{ background-color:{card_bg}!important; border-radius:16px; overflow:hidden; border:1px solid {card_border}; box-shadow:0 4px 20px {shadow}; transition:transform .2s ease; margin-bottom:1.8rem; }}
 .destination-card:hover {{ transform:translateY(-4px); }}
 .card-image-container {{ width:100%; height:190px; background-size:cover; background-position:center; }}
 .card-content {{ padding:1.25rem; background-color:{card_bg}!important; }}
@@ -55,47 +55,66 @@ li[role="option"]:hover {{ background-color:{card_border}!important; }}
 .price-tag {{ font-size:1.4rem; font-weight:700; color:{price_color}!important; }}
 .booking-btn {{ display:block; width:100%; text-align:center; background-color:{btn_bg}!important; color:{btn_text}!important; padding:.65rem 1rem; border-radius:8px; text-decoration:none!important; font-weight:600; font-size:.85rem; letter-spacing:.5px; margin-top:1rem; }}
 .booking-btn:hover {{ background-color:{btn_hover}!important; }}
-.live-indicator {{ display:inline-flex; align-items:center; gap:6px; font-size:.75rem; color:{price_color}!important; font-weight:600; letter-spacing:.5px; }}
-.dot {{ width:8px; height:8px; background-color:#10B981; border-radius:50%; }}
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. GEOCODIFICACIÓN Y TENDENCIA ILUSTRATIVA DE PRECIOS
+# 2. SERVICIOS: GEOCODIFICACIÓN Y SERPAPI
 # -----------------------------------------------------------------------------
 @st.cache_data(ttl=86400)
 def obtener_coordenadas_lugar(nombre_lugar):
-    """Busca coordenadas mediante Nominatim; usa coordenadas neutrales si falla."""
+    """Busca coordenadas con Nominatim; devuelve un valor de reserva si no encuentra."""
     try:
         response = httpx.get(
             "https://nominatim.openstreetmap.org/search",
             params={"q": nombre_lugar, "format": "json", "limit": 1},
-            headers={"User-Agent": "VagabondFlightAppGlobal/2.0"},
+            headers={"User-Agent": "VagabondApp/3.0 (travel search demo)"},
             timeout=6.0,
         )
         response.raise_for_status()
-        data = response.json()
-        if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
+        results = response.json()
+        if results:
+            return float(results[0]["lat"]), float(results[0]["lon"])
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
         pass
     return 20.0, 0.0
 
 
-@st.cache_data(ttl=300)
-def calcular_historico_precios_reales(precio_actual, codigo_destino):
-    """Crea una tendencia aleatoria ilustrativa, no un histórico real de tarifas."""
-    fechas, precios = [], []
-    hoy = datetime.now()
-    seed = sum(ord(char) for char in codigo_destino) + int(precio_actual)
-    rng = random.Random(seed)
-    for i in range(14):
-        dia = hoy + timedelta(days=i)
-        factor = 1.30 if dia.weekday() in (4, 5, 6) else 0.88
-        precio = max(18, int((precio_actual + rng.randint(-12, 18)) * factor))
-        fechas.append(dia.strftime("%d %b (%a)"))
-        precios.append(precio)
-    return pd.DataFrame({"Día": fechas, "Precio (€)": precios}).set_index("Día")
+def obtener_clave_serpapi():
+    try:
+        return st.secrets.get("SERPAPI_KEY")
+    except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError):
+        return None
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def buscar_vuelo_google_flights_real(origen, destino_code, outbound_date, return_date, api_key):
+    """Consulta resultados de Google Flights a través del servicio externo SerpApi."""
+    if not api_key or not re.fullmatch(r"[A-Z]{3}", str(origen)) or not re.fullmatch(r"[A-Z]{3}", str(destino_code)):
+        return None
+    try:
+        response = httpx.get(
+            "https://serpapi.com/search.json",
+            params={
+                "engine": "google_flights",
+                "departure_id": origen,
+                "arrival_id": destino_code,
+                "outbound_date": outbound_date,
+                "return_date": return_date,
+                "currency": "EUR",
+                "hl": "es",
+                "api_key": api_key,
+            },
+            timeout=12.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        flights = payload.get("best_flights") or payload.get("other_flights") or []
+        if flights:
+            return int(flights[0]["price"])
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+        return None
+    return None
 
 # -----------------------------------------------------------------------------
 # 3. CATÁLOGO DE ORÍGENES Y DESTINOS
@@ -139,45 +158,7 @@ DATA_DESTINOS_BASE = [
 ]
 
 # -----------------------------------------------------------------------------
-# 4. BÚSQUEDA DE VUELOS
-# -----------------------------------------------------------------------------
-@st.cache_data(ttl=300)
-def consultar_vuelos_tiempo_real(origen_code, lista_destinos):
-    """Intenta fast-flights; los precios de catálogo son referencias, no cotizaciones."""
-    fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
-    fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
-    try:
-        from fast_flights import FlightData, Passengers, search_airline
-    except ImportError:
-        FlightData = Passengers = search_airline = None
-
-    vuelos = []
-    for item in lista_destinos:
-        data = item.copy()
-        data["fuente_precio"] = "Precio de referencia (no cotización)"
-        # A destination typed by the user is a name, not a valid IATA code.
-        if search_airline is not None and len(item["code"]) == 3:
-            try:
-                resultado = search_airline(
-                    flight_data=[FlightData(date=fecha_ida, from_airport=origen_code, to_airport=item["code"])],
-                    trip="one-way", passengers=Passengers(adults=1), currency="EUR",
-                )
-                precios = [int(f.price) for f in (resultado.flights or []) if getattr(f, "price", None) is not None]
-                data["precio"] = min(precios) if precios else item["precio_base"]
-                if precios:
-                    data["fuente_precio"] = "Resultado fast-flights; confirma precio y disponibilidad"
-            except Exception:
-                data["precio"] = item["precio_base"]
-        else:
-            data["precio"] = item["precio_base"]
-
-        consulta = f"Flights to {item['destino']} from {origen_code} on {fecha_ida} through {fecha_vuelta}"
-        data["url_reserva"] = "https://www.google.com/travel/flights?q=" + urllib.parse.quote(consulta)
-        vuelos.append(data)
-    return vuelos
-
-# -----------------------------------------------------------------------------
-# 5. CONTROLES DE BÚSQUEDA
+# 4. CONTROLES Y PREPARACIÓN DE BÚSQUEDA
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Configuración de búsqueda")
@@ -196,12 +177,13 @@ duracion_filtro = st.sidebar.selectbox(
     "Duración del viaje",
     ["Cualquier duración", "Escapada rápida (3-4 días)", "Semana completa (5-8 días)", "Gran viaje (+8 días)"],
 )
-presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 2000, 450, step=10)
+presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 2000, 500, step=10)
 
-# -----------------------------------------------------------------------------
-# 6. DESTINO PERSONALIZADO Y RESULTADOS
-# -----------------------------------------------------------------------------
-destinos_a_procesar = DATA_DESTINOS_BASE.copy()
+fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
+serpapi_key = obtener_clave_serpapi()
+
+destinos_a_procesar = [item.copy() for item in DATA_DESTINOS_BASE]
 if region_filtro == "Búsqueda por destino exacto..." and destino_busqueda.strip():
     lat_geo, lon_geo = obtener_coordenadas_lugar(destino_busqueda.strip())
     destinos_a_procesar.insert(0, {
@@ -211,21 +193,43 @@ if region_filtro == "Búsqueda por destino exacto..." and destino_busqueda.strip
         "img": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=800&auto=format&fit=crop",
     })
 
+# -----------------------------------------------------------------------------
+# 5. BÚSQUEDA DE PRECIOS
+# -----------------------------------------------------------------------------
 st.markdown('<div class="brand-header">V A G A B O N D</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="brand-sub">Escapadas desde <b>{ciudad_origen}</b> · precios orientativos sujetos a disponibilidad</div>', unsafe_allow_html=True)
-st.caption("El gráfico de tendencia es una simulación, no un histórico de tarifas. Confirma los precios con la aerolínea o el proveedor.")
+st.markdown(f'<div class="brand-sub">Búsqueda desde <b>{html.escape(ciudad_origen)}</b> · tarifas sujetas a cambios</div>', unsafe_allow_html=True)
+if serpapi_key:
+    st.caption("SerpApi está configurada: se consultan resultados de Google Flights a través de SerpApi. Verifica la tarifa antes de reservar.")
+else:
+    st.caption("Sin SERPAPI_KEY: se muestran precios de referencia, no tarifas en tiempo real. Los enlaces abren búsquedas de Google Flights.")
 
-vuelos = consultar_vuelos_tiempo_real(codigo_iata, destinos_a_procesar)
-df = pd.DataFrame(vuelos)
+vuelos_procesados = []
+for item in destinos_a_procesar:
+    item_copy = item.copy()
+    precio_real = buscar_vuelo_google_flights_real(
+        codigo_iata, item["code"], fecha_ida, fecha_vuelta, serpapi_key
+    )
+    if precio_real is not None:
+        item_copy["precio"] = precio_real
+        item_copy["fuente_precio"] = "Resultado de SerpApi / Google Flights"
+    else:
+        item_copy["precio"] = item["precio_base"]
+        item_copy["fuente_precio"] = "Precio de referencia (no cotización)"
+    query = f"Flights to {item['destino']} from {codigo_iata} on {fecha_ida} through {fecha_vuelta}"
+    item_copy["url_reserva"] = "https://www.google.com/travel/flights?q=" + urllib.parse.quote(query)
+    vuelos_procesados.append(item_copy)
+
+df = pd.DataFrame(vuelos_procesados)
 df_filtrado = df[df["precio"] <= presupuesto_max].copy()
-
 if region_filtro != "Cualquier rincón del mundo":
     if region_filtro == "Búsqueda por destino exacto...":
-        if destino_busqueda:
+        if destino_busqueda.strip():
             term = destino_busqueda.strip().lower()
-            mask = (df_filtrado["destino"].str.lower().str.contains(term, na=False)
-                    | df_filtrado["region"].str.lower().str.contains(term, na=False)
-                    | df_filtrado["pais"].str.lower().str.contains(term, na=False))
+            mask = (
+                df_filtrado["destino"].str.lower().str.contains(term, na=False)
+                | df_filtrado["region"].str.lower().str.contains(term, na=False)
+                | df_filtrado["pais"].str.lower().str.contains(term, na=False)
+            )
             df_filtrado = df_filtrado[mask]
     else:
         df_filtrado = df_filtrado[df_filtrado["region"] == region_filtro]
@@ -236,60 +240,49 @@ elif duracion_filtro == "Semana completa (5-8 días)":
     df_filtrado = df_filtrado[df_filtrado["dias_num"].between(5, 8)]
 elif duracion_filtro == "Gran viaje (+8 días)":
     df_filtrado = df_filtrado[df_filtrado["dias_num"] > 8]
-
 df_filtrado = df_filtrado.sort_values(by="precio")
 
+# -----------------------------------------------------------------------------
+# 6. RESULTADOS
+# -----------------------------------------------------------------------------
 if not df_filtrado.empty:
     top = df_filtrado.iloc[0]
-    st.markdown("### Oferta destacada · menor precio mostrado")
-    col_hero1, col_hero2 = st.columns([1.2, 2])
-    with col_hero1:
+    st.markdown("### Oferta destacada")
+    hero_image, hero_details = st.columns([1.2, 2])
+    with hero_image:
         st.image(top["img"], use_container_width=True)
-    with col_hero2:
+    with hero_details:
         st.markdown(f"""
-        <div class="hero-badge">Precio mostrado · confirma disponibilidad</div>
-        <h2 style="font-family:'Cinzel',serif;margin:0">{top['destino']} ({top['pais']})</h2>
-        <p>Salida desde {ciudad_origen} · {top['duracion']}</p>
-        <div style="font-size:2rem;font-weight:700;color:{price_color};margin:10px 0">{top['precio']} €</div>
-        <a href="{top['url_reserva']}" target="_blank" class="booking-btn">CONSULTAR EN GOOGLE FLIGHTS</a>
+        <div class="hero-badge">{html.escape(top['fuente_precio'])}</div>
+        <h2 style="font-family:'Cinzel',serif;margin:0">{html.escape(top['destino'])} ({html.escape(top['pais'])})</h2>
+        <p>Duración recomendada: {html.escape(top['duracion'])}</p>
+        <div style="font-size:2rem;font-weight:700;color:{price_color};margin:10px 0">Desde {top['precio']} €</div>
+        <a href="{html.escape(top['url_reserva'], quote=True)}" target="_blank" rel="noopener noreferrer" class="booking-btn">CONSULTAR EN GOOGLE FLIGHTS</a>
         """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown(f"### 📊 Tendencia ilustrativa de precios para {top['destino']}")
-    st.caption("Valores generados aleatoriamente a partir del precio mostrado; no son cotizaciones para fechas concretas.")
-    trend = calcular_historico_precios_reales(top["precio"], top["code"])
-    chart_col, info_col = st.columns([2.5, 1])
-    with chart_col:
-        st.bar_chart(trend, y="Precio (€)", height=280)
-    with info_col:
-        dia_min = trend["Precio (€)"].idxmin()
-        precio_min = int(trend["Precio (€)"].min())
-        promedio = int(trend["Precio (€)"].mean())
-        st.metric("Día más bajo (simulado)", dia_min, f"{precio_min} €")
-        st.metric("Promedio simulado", f"{promedio} €")
-
-    st.markdown("---")
-    st.markdown("### Todas las opciones disponibles")
+    st.markdown("### Escapadas encontradas")
     cols = st.columns(3)
-    for idx, (_, row) in enumerate(df_filtrado.iterrows()):
-        with cols[idx % 3]:
+    for index, (_, row) in enumerate(df_filtrado.iterrows()):
+        with cols[index % 3]:
             st.markdown(f"""
             <div class="destination-card">
-                <div class="card-image-container" style="background-image:url('{row['img']}')"></div>
+                <div class="card-image-container" style="background-image:url('{html.escape(row['img'], quote=True)}')"></div>
                 <div class="card-content">
-                    <div style="display:flex;justify-content:space-between;align-items:baseline">
-                        <h3 class="card-title">{row['destino']}</h3><span class="price-tag">{row['precio']} €</span>
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                        <h3 class="card-title">{html.escape(row['destino'])}</h3>
+                        <span class="price-tag">{row['precio']} €</span>
                     </div>
-                    <div class="card-region">{row['pais']} · {row['duracion']}</div>
-                    <div style="font-size:.8rem;color:{text_sub};margin-top:6px">Vuelo {row['tipo']}</div>
-                    <div style="font-size:.72rem;color:{text_sub};margin-top:6px">{row['fuente_precio']}</div>
-                    <a href="{row['url_reserva']}" target="_blank" class="booking-btn">CONSULTAR EN GOOGLE FLIGHTS</a>
+                    <div class="card-region">{html.escape(row['pais'])} · {html.escape(row['duracion'])}</div>
+                    <div style="font-size:.8rem;color:{text_sub};margin-top:6px">Vuelo {html.escape(row['tipo'])}</div>
+                    <div style="font-size:.72rem;color:{text_sub};margin-top:6px">{html.escape(row['fuente_precio'])}</div>
+                    <a href="{html.escape(row['url_reserva'], quote=True)}" target="_blank" rel="noopener noreferrer" class="booking-btn">VER EN GOOGLE FLIGHTS</a>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("### Ubicación global en el mapa")
+    st.markdown("### Mapa de rutas globales")
     st.map(df_filtrado[["lat", "lon"]], zoom=1)
 else:
-    st.info("No hay rutas disponibles para los filtros seleccionados. Ajusta el presupuesto o cambia el destino.")
+    st.info("No hay opciones que coincidan con los filtros. Incrementa el presupuesto o cambia la duración/destino.")
