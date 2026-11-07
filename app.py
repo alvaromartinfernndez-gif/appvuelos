@@ -1,345 +1,365 @@
 import streamlit as st
 import pandas as pd
-import random
+import urllib.parse
 from datetime import datetime, timedelta
 
-try:
-    from fast_flights import FlightQuery, Passengers, create_query, get_flights
-except ImportError:
-    FlightQuery = None
-    Passengers = None
-    create_query = None
-    get_flights = None
-
-try:
-    from FlightRadarAPI import FlightRadar24API
-except ImportError:
-    FlightRadar24API = None
-
 # -----------------------------------------------------------------------------
-# 1. CONFIGURACIÓN DE LA PÁGINA
+# 1. CONFIGURACIÓN DE PÁGINA Y TIPOGRAFÍAS ELEGANTES
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Global Flight Escape | Buscador de Escapadas",
-    page_icon="✈️",
+    page_title="Vagabond | Escapadas Globales",
+    page_icon="🧭",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Estilos CSS personalizados para una interfaz moderna
+# Inyección de fuentes tipográficas y diseño sobrio mediante CSS
 st.markdown("""
 <style>
-    .main-title {
-        font-size: 2.2rem;
-        font-weight: 800;
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', sans-serif;
         color: #1E293B;
+    }
+
+    .brand-header {
+        font-family: 'Cinzel', serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #0F172A;
         margin-bottom: 0.2rem;
+        text-transform: uppercase;
     }
-    .sub-title {
-        font-size: 1rem;
+
+    .brand-sub {
+        font-size: 0.95rem;
         color: #64748B;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
+        font-weight: 300;
+        letter-spacing: 1px;
     }
-    .card-dest {
-        background-color: #F8FAFC;
+
+    .destination-card {
+        background-color: #FFFFFF;
+        border-radius: 16px;
+        overflow: hidden;
         border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        margin-bottom: 1.8rem;
     }
-    .badge-price {
-        background-color: #059669;
-        color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: bold;
-        font-size: 1.1rem;
+
+    .destination-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
     }
-    .badge-status {
-        background-color: #DBEAFE;
-        color: #1E40AF;
-        padding: 2px 8px;
-        border-radius: 6px;
+
+    .card-image-container {
+        width: 100%;
+        height: 190px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+
+    .card-content {
+        padding: 1.25rem;
+    }
+
+    .card-title {
+        font-family: 'Cinzel', serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0F172A;
+        margin: 0;
+    }
+
+    .card-region {
         font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #64748B;
         font-weight: 600;
+        margin-top: 2px;
+    }
+
+    .price-tag {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #047857;
+    }
+
+    .booking-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        background-color: #0F172A;
+        color: #FFFFFF !important;
+        padding: 0.65rem 1rem;
+        border-radius: 8px;
+        text-decoration: none !important;
+        font-weight: 600;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        margin-top: 1rem;
+        transition: background-color 0.2s;
+    }
+
+    .booking-btn:hover {
+        background-color: #047857;
+    }
+
+    .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: #047857;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        background-color: #10B981;
+        border-radius: 50%;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. BASE DE DATOS MUNDIAL DE ORÍGENES Y REGIONES DE DESTINO
+# 2. CATÁLOGO GLOBAL Y FOTOGRAFÍAS PAISAJÍSTICAS DE ALTA RESOLUCIÓN
 # -----------------------------------------------------------------------------
-ORIGENES_GLOBALL = {
-    "Europa 🇪🇺": {
-        "España": ["Madrid (MAD)", "Barcelona (BCN)", "Valencia (VLC)", "Málaga (AGP)", "Sevilla (SVQ)", "Bilbao (BIO)"],
-        "Francia": ["París (CDG)", "Niza (NCE)", "Lyon (LYS)", "Marsella (MRS)"],
+ORIGENES_GLOBALES = {
+    "Europa": {
+        "España": ["Madrid (MAD)", "Barcelona (BCN)", "Valencia (VLC)", "Málaga (AGP)", "Sevilla (SVQ)"],
+        "Francia": ["París (CDG)", "Niza (NCE)", "Marsella (MRS)"],
         "Alemania": ["Fráncfort (FRA)", "Múnich (MUC)", "Berlín (BER)"],
-        "Reino Unido": ["Londres (LHR)", "Mánchester (MAN)", "Edimburgo (EDI)"],
-        "Italia": ["Roma (FCO)", "Milán (MXP)", "Venecia (VCE)"],
+        "Reino Unido": ["Londres (LHR)", "Mánchester (MAN)"],
+        "Italia": ["Roma (FCO)", "Milán (MXP)", "Venecia (VCE)"]
     },
-    "América del Norte 🌎": {
-        "Estados Unidos": ["Nueva York (JFK)", "Los Ángeles (LAX)", "Miami (MIA)", "Chicago (ORD)"],
-        "México": ["Ciudad de México (MEX)", "Cancún (CUN)", "Guadalajara (GDL)"],
-        "Canadá": ["Toronto (YYZ)", "Vancouver (YVR)", "Montreal (YUL)"]
+    "América": {
+        "Estados Unidos": ["Nueva York (JFK)", "Los Ángeles (LAX)", "Miami (MIA)"],
+        "México": ["Ciudad de México (MEX)", "Cancún (CUN)"],
+        "Colombia": ["Bogotá (BOG)", "Medellín (MDE)"],
+        "Argentina": ["Buenos Aires (EZE)"]
     },
-    "América del Sur 🌎": {
-        "Colombia": ["Bogotá (BOG)", "Medellín (MDE)", "Cartagena (CTG)"],
-        "Argentina": ["Buenos Aires (EZE)", "Mendoza (MDZ)", "Córdoba (COR)"],
-        "Brasil": ["São Paulo (GRU)", "Río de Janeiro (GIG)"],
-        "Chile": ["Santiago (SCL)"],
-        "Perú": ["Lima (LIM)"]
-    },
-    "Asia y Cáucaso 🌏": {
+    "Asia & Oriente": {
         "Japón": ["Tokio (HND)", "Osaka (KIX)"],
-        "Rusia / Cáucaso": ["Moscú (SVO)", "Majachkalá / Daguestán (MCX)", "Sochi (AER)"],
-        "Tailandia": ["Bangkok (BKK)", "Phuket (HKT)"],
-        "EAU": ["Dubái (DXB)", "Abu Dabi (AUH)"]
+        "Emiratos Árabes": ["Dubái (DXB)"],
+        "Tailandia": ["Bangkok (BKK)"]
     }
 }
 
 REGIONES_DESTINO = [
-    "🔥 Ver todo (Cualquier rincón del planeta)",
-    "🏝️ El Caribe (Cancún, Punta Cana, La Habana, San Andrés...)",
-    "⛰️ Daguestán y Cáucaso (Majachkalá, Derbent, Tblisi...)",
-    "🌴 Sudeste Asiático (Bangkok, Bali, Phuket, Vietnam...)",
-    "🏰 Europa de Escapada (Roma, París, Londres, Oporto...)",
-    "🏜️ Medio Oriente y Desiertos (Dubái, Petra, El Cairo...)",
-    "❄️ Nórdicos y Auroras (Reikiavik, Oslo, Rovaniemi...)",
-    "🏖️ Islas Mediterráneas (Ibiza, Mikonos, Cerdeña, Malta...)",
-    "🌺 Polinesia e Islas del Pacífico (Fiyi, Tahití...)",
-    "🔍 Buscar destino / ciudad específica..."
+    "Cualquier rincón del mundo",
+    "Caribe & Playas Tropicales",
+    "Cáucaso & Daguestán",
+    "Sudeste Asiático",
+    "Capitales Europeas",
+    "Oriente Medio & Desierto",
+    "Nórdicos & Auroras Boreales",
+    "Islas del Mediterráneo",
+    "Búsqueda por destino exacto..."
 ]
 
-DATA_BASE_DESTINOS = [
-    {"destino": "Roma", "region": "🏰 Europa de Escapada", "pais": "Italia", "precio_base": 35, "duracion": "3 días", "lat": 41.9028, "lon": 12.4964, "tipo": "Directo", "code": "FCO"},
-    {"destino": "Oporto", "region": "🏰 Europa de Escapada", "pais": "Portugal", "precio_base": 24, "duracion": "3 días", "lat": 41.1579, "lon": -8.6291, "tipo": "Directo", "code": "OPO"},
-    {"destino": "Cancún / El Caribe", "region": "🏝️ El Caribe (Cancún, Punta Cana, La Habana, San Andrés...)", "pais": "México", "precio_base": 320, "duracion": "7 días", "lat": 21.1619, "lon": -86.8515, "tipo": "1 Escala", "code": "CUN"},
-    {"destino": "Punta Cana / El Caribe", "region": "🏝️ El Caribe (Cancún, Punta Cana, La Habana, San Andrés...)", "pais": "Rep. Dominicana", "precio_base": 380, "duracion": "8 días", "lat": 18.5601, "lon": -68.3725, "tipo": "1 Escala", "code": "PUJ"},
-    {"destino": "Majachkalá / Daguestán", "region": "⛰️ Daguestán y Cáucaso (Majachkalá, Derbent, Tblisi...)", "pais": "Rusia", "precio_base": 190, "duracion": "5 días", "lat": 42.9849, "lon": 47.5046, "tipo": "1 Escala", "code": "MCX"},
-    {"destino": "Derbent / Daguestán", "region": "⛰️ Daguestán y Cáucaso (Majachkalá, Derbent, Tblisi...)", "pais": "Rusia", "precio_base": 210, "duracion": "6 días", "lat": 42.0678, "lon": 48.2899, "tipo": "1 Escala", "code": "MCX"},
-    {"destino": "Bangkok", "region": "🌴 Sudeste Asiático (Bangkok, Bali, Phuket, Vietnam...)", "pais": "Tailandia", "precio_base": 450, "duracion": "10 días", "lat": 13.7563, "lon": 100.5018, "tipo": "1 Escala", "code": "BKK"},
-    {"destino": "Bali", "region": "🌴 Sudeste Asiático (Bangkok, Bali, Phuket, Vietnam...)", "pais": "Indonesia", "precio_base": 520, "duracion": "12 días", "lat": -8.4095, "lon": 115.1889, "tipo": "1 Escala", "code": "DPS"},
-    {"destino": "Dubái", "region": "🏜️ Medio Oriente y Desiertos (Dubái, Petra, El Cairo...)", "pais": "EAU", "precio_base": 210, "duracion": "4 días", "lat": 25.2048, "lon": 55.2708, "tipo": "Directo", "code": "DXB"},
-    {"destino": "Reikiavik", "region": "❄️ Nórdicos y Auroras (Reikiavik, Oslo, Rovaniemi...)", "pais": "Islandia", "precio_base": 115, "duracion": "4 días", "lat": 64.1466, "lon": -21.9426, "tipo": "Directo", "code": "KEF"},
-    {"destino": "Ibiza", "region": "🏖️ Islas Mediterráneas (Ibiza, Mikonos, Cerdeña, Malta...)", "pais": "España", "precio_base": 18, "duracion": "3 días", "lat": 38.9067, "lon": 1.4206, "tipo": "Directo", "code": "IBZ"},
-    {"destino": "Bora Bora", "region": "🌺 Polinesia e Islas del Pacífico (Fiyi, Tahití...)", "pais": "Polinesia Fr.", "precio_base": 980, "duracion": "10 días", "lat": -16.5004, "lon": -151.7415, "tipo": "2 Escalas", "code": "BOB"}
+DATA_DESTINOS = [
+    {
+        "destino": "Roma", "region": "Capitales Europeas", "pais": "Italia",
+        "precio_base": 34, "duracion": "3 días", "lat": 41.9028, "lon": 12.4964, "tipo": "Directo", "code": "FCO",
+        "img": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=800&auto=format&fit=crop"
+    },
+    {
+        "destino": "Oporto", "region": "Capitales Europeas", "pais": "Portugal",
+        "precio_base": 22, "duracion": "3 días", "lat": 41.1579, "lon": -8.6291, "tipo": "Directo", "code": "OPO",
+        "img": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=800&auto=format&fit=crop"
+    },
+    {
+        "destino": "Cancún", "region": "Caribe & Playas Tropicales", "pais": "México",
+        "precio_base": 340, "duracion": "7 días", "lat": 21.1619, "lon": -86.8515, "tipo": "1 escala", "code": "CUN",
+        "img": "https://images.unsplash.com/photo-1510097467424-192d713be8b2?q=80&w=800&auto=format&fit=crop"
+    },
+    {
+        "destino": "Majachkalá", "region": "Cáucaso & Daguestán", "pais": "Rusia / Cáucaso",
+        "precio_base": 195, "duracion": "5 días", "lat": 42.9849, "lon": 47.5046, "tipo": "1 escala", "code": "MCX",
+        "img": "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?q=80&w=800&auto=format&fit=crop"
+    },
+    {
+        "destino": "Bangkok", "region": "Sudeste Asiático", "pais": "Tailandia",
+        "precio_base": 460, "duracion": "10 días", "lat": 13.7563, "lon": 100.5018, "tipo": "1 escala", "code": "BKK",
+        "img": "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=800&auto=format&fit=crop"
+    },
+    {
+        "destino": "Dubái", "region": "Oriente Medio & Desierto", "pais": "EAU",
+        "precio_base": 220, "duracion": "4 días", "lat": 25.2048, "lon": 55.2708, "tipo": "Directo", "code": "DXB",
+        "img": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop"
+    },
+    {
+        "destino": "Reikiavik", "region": "Nórdicos & Auroras Boreales", "pais": "Islandia",
+        "precio_base": 125, "duracion": "4 días", "lat": 64.1466, "lon": -21.9426, "tipo": "Directo", "code": "KEF",
+        "img": "https://images.unsplash.com/photo-1504893524553-b855bce32c67?q=80&w=800&auto=format&fit=crop"
+    },
+    {
+        "destino": "Ibiza", "region": "Islas del Mediterráneo", "pais": "España",
+        "precio_base": 19, "duracion": "3 días", "lat": 38.9067, "lon": 1.4206, "tipo": "Directo", "code": "IBZ",
+        "img": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"
+    }
 ]
 
 # -----------------------------------------------------------------------------
-# 3. MOTOR DE BÚSQUEDA DUAL (fast-flights + flight-radar enrichment)
+# 3. MOTOR DE BÚSQUEDA CON ENLACES DE RESERVA
 # -----------------------------------------------------------------------------
-def extract_price(raw_result):
-    """Extrae un precio de una respuesta de fast-flights o de una estructura similar."""
-    if raw_result is None:
-        return None
+@st.cache_data(ttl=300)
+def consultar_vuelos_tiempo_real(origen_code):
+    """Consulta precios con fast-flights cuando está disponible.
 
-    if isinstance(raw_result, dict):
-        for key in ["price", "price_amount", "total", "amount"]:
-            if key in raw_result:
-                return raw_result[key]
-        return None
-
-    if hasattr(raw_result, "price"):
-        return raw_result.price
-
-    if hasattr(raw_result, "amount"):
-        return raw_result.amount
-
-    if isinstance(raw_result, (list, tuple)) and raw_result:
-        return extract_price(raw_result[0])
-
-    return None
-
-
-def obtener_flights_radar_count():
-    """Intenta devolver un número de vuelos activos usando FlightRadarAPI."""
-    if FlightRadar24API is None:
-        return None
+    Los precios de catálogo se usan como fallback y no son cotizaciones reales.
+    """
+    vuelos_procesados = []
+    fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+    fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
 
     try:
-        fr_api = FlightRadar24API()
-        vuelos = fr_api.get_flights()
-        if isinstance(vuelos, list):
-            return len(vuelos)
-        if isinstance(vuelos, dict) and "result" in vuelos:
-            return len(vuelos["result"])
-        if hasattr(vuelos, "__len__"):
-            return len(vuelos)
-        return None
-    except Exception:
-        return None
+        from fast_flights import FlightQuery, Passengers, create_query, get_flights
 
-
-def obtener_vuelos_tiempo_real(origen_code):
-    """
-    Intenta obtener vuelos con fast-flights usando la API principal.
-    Si falla, usa una estimación de demostración, con FlightRadarAPI como apoyo.
-    """
-    vuelos_resultado = []
-    fecha_proxima = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
-
-    if FlightQuery is not None and create_query is not None and get_flights is not None:
-        try:
-            for item in DATA_BASE_DESTINOS[:6]:
+        for item in DATA_DESTINOS:
+            item_data = item.copy()
+            try:
                 query = create_query(
-                    flights=[
-                        FlightQuery(
-                            date=fecha_proxima,
-                            from_airport=origen_code,
-                            to_airport=item["code"],
-                        )
-                    ],
+                    flights=[FlightQuery(
+                        date=fecha_ida,
+                        from_airport=origen_code,
+                        to_airport=item["code"],
+                    )],
                     seat="economy",
                     trip="one-way",
                     passengers=Passengers(adults=1),
-                    language="en-US",
                     currency="EUR",
                 )
+                result = get_flights(query)
+                found_flights = getattr(result, "flights", [])
+                if found_flights:
+                    item_data["precio"] = int(found_flights[0].price)
+                    item_data["fuente_precio"] = "fast-flights / Google Flights"
+                else:
+                    item_data["precio"] = item["precio_base"]
+                    item_data["fuente_precio"] = "Precio de referencia (no cotización)"
+            except Exception:
+                item_data["precio"] = item["precio_base"]
+                item_data["fuente_precio"] = "Precio de referencia (no cotización)"
 
-                raw = get_flights(query)
-                resultados = []
+            query_text = (
+                f"Flights to {item['destino']} from {origen_code} "
+                f"on {fecha_ida} through {fecha_vuelta}"
+            )
+            item_data["url_reserva"] = (
+                "https://www.google.com/travel/flights?q="
+                + urllib.parse.quote(query_text)
+            )
+            vuelos_procesados.append(item_data)
 
-                if hasattr(raw, "flights"):
-                    resultados = raw.flights
-                elif isinstance(raw, dict) and "flights" in raw:
-                    resultados = raw["flights"]
-                elif isinstance(raw, list):
-                    resultados = raw
+    except (ImportError, Exception):
+        for item in DATA_DESTINOS:
+            item_data = item.copy()
+            item_data["precio"] = item["precio_base"]
+            item_data["fuente_precio"] = "Precio de referencia (no cotización)"
+            query_text = (
+                f"Flights to {item['destino']} from {origen_code} "
+                f"on {fecha_ida} through {fecha_vuelta}"
+            )
+            item_data["url_reserva"] = (
+                "https://www.google.com/travel/flights?q="
+                + urllib.parse.quote(query_text)
+            )
+            vuelos_procesados.append(item_data)
 
-                if resultados:
-                    precio = extract_price(resultados[0])
-                    if precio is not None:
-                        item_copy = item.copy()
-                        item_copy["precio"] = int(precio)
-                        item_copy["proveedor"] = "fast-flights + FlightRadarAPI"
-                        vuelos_resultado.append(item_copy)
-                        continue
-
-                item_copy = item.copy()
-                item_copy["precio"] = max(15, int(item["precio_base"]))
-                item_copy["proveedor"] = "fast-flights (sin datos reales)"
-                vuelos_resultado.append(item_copy)
-
-            if vuelos_resultado:
-                return vuelos_resultado, "🟢 fast-flights activo"
-
-        except Exception:
-            pass
-
-    # Fallback seguro de demostración
-    for item in DATA_BASE_DESTINOS:
-        item_copy = item.copy()
-        variacion = random.randint(-8, 12)
-        item_copy["precio"] = max(15, item_copy["precio_base"] + variacion)
-        item_copy["proveedor"] = "Fallback de demostración"
-        vuelos_resultado.append(item_copy)
-
-    return vuelos_resultado, "🟡 Datos de demostración activos"
+    return vuelos_procesados
 
 # -----------------------------------------------------------------------------
-# 4. BARRA LATERAL (FILTROS DE ORIGEN Y DESTINO GLOBAL)
+# 4. CONTROLES Y FILTROS
 # -----------------------------------------------------------------------------
-st.sidebar.title("✈️ Configura tu Viaje")
+st.sidebar.markdown("### Configuración de búsqueda")
 
-st.sidebar.subheader("1. Origen (Cualquier lugar)")
-continente_sel = st.sidebar.selectbox("Continente de salida:", list(ORIGENES_GLOBALL.keys()))
-pais_sel = st.sidebar.selectbox("País de salida:", list(ORIGENES_GLOBALL[continente_sel].keys()))
-ciudad_origen_sel = st.sidebar.selectbox("Aeropuerto / Ciudad de origen:", ORIGENES_GLOBALL[continente_sel][pais_sel])
+continente = st.sidebar.selectbox("Región de salida", list(ORIGENES_GLOBALES.keys()))
+pais = st.sidebar.selectbox("País", list(ORIGENES_GLOBALES[continente].keys()))
+ciudad_origen = st.sidebar.selectbox("Aeropuerto", ORIGENES_GLOBALES[continente][pais])
 
-origen_manual = st.sidebar.checkbox("¿No está tu ciudad? Escribir origen manual")
-if origen_manual:
-    ciudad_origen_final = st.sidebar.text_input("Escribe tu ciudad u origen:", "Málaga (AGP)")
+if "(" in ciudad_origen and ")" in ciudad_origen:
+    codigo_iata = ciudad_origen.split("(")[-1].replace(")", "").strip()
 else:
-    ciudad_origen_final = ciudad_origen_sel
-
-if "(" in ciudad_origen_final and ")" in ciudad_origen_final:
-    codigo_origen_iata = ciudad_origen_final.split("(")[-1].replace(")", "").strip()
-else:
-    codigo_origen_iata = "MAD"
+    codigo_iata = "MAD"
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("2. Destino o Región Específica")
-region_seleccionada = st.sidebar.selectbox("Selecciona región objetivo:", REGIONES_DESTINO)
+region_filtro = st.sidebar.selectbox("Filtro de Destino", REGIONES_DESTINO)
 
-destino_especifico_texto = ""
-if region_seleccionada == "🔍 Buscar destino / ciudad específica...":
-    destino_especifico_texto = st.sidebar.text_input("Introduce ciudad, región o país exacto:", "Daguestán")
+destino_busqueda = ""
+if region_filtro == "Búsqueda por destino exacto...":
+    destino_busqueda = st.sidebar.text_input("Escribe la ciudad o territorio:", "Daguestán")
 
 st.sidebar.markdown("---")
-presupuesto_max = st.sidebar.slider("Presupuesto máximo por vuelo (€):", 10, 1000, 300, step=10)
+presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 1000, 350, step=10)
 
 # -----------------------------------------------------------------------------
-# 5. EJECUCIÓN Y MOSTRADO DE RESULTADOS
+# 5. PRESENTACIÓN VISUAL
 # -----------------------------------------------------------------------------
-st.markdown('<div class="main-title">🌍 Buscador Global de Escapadas</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="sub-title">Buscando las mejores ofertas con salida desde <b>{ciudad_origen_final}</b></div>', unsafe_allow_html=True)
+st.markdown('<div class="brand-header">V A G A B O N D</div>', unsafe_allow_html=True)
+st.markdown(
+    f'<div class="brand-sub">Escapadas seleccionadas desde <b>{ciudad_origen}</b></div>',
+    unsafe_allow_html=True,
+)
 
-# Integración opcional con FlightRadarAPI para soporte de tracking en tiempo real
-radar_count = obtener_flights_radar_count()
-if radar_count is not None:
-    st.caption(f"🛰️ FlightRadarAPI activo: {radar_count} vuelos en tiempo real detectados")
-else:
-    st.caption("🛰️ FlightRadarAPI no disponible; el buscador sigue funcionando con fast-flights o fallback")
+st.markdown("""
+<div class="live-indicator">
+    <div class="dot"></div> Consulta de precios; pueden ser estimados y deben confirmarse con el proveedor
+</div>
+""", unsafe_allow_html=True)
+st.write("")
 
-lista_vuelos, estado_motor = obtener_vuelos_tiempo_real(codigo_origen_iata)
-st.caption(estado_motor)
+vuelos = consultar_vuelos_tiempo_real(codigo_iata)
+df = pd.DataFrame(vuelos)
+df_filtrado = df[df["precio"] <= presupuesto_max].copy()
 
-df = pd.DataFrame(lista_vuelos)
-if not df.empty:
-    df_filtrado = df[df["precio"] <= presupuesto_max].copy()
-else:
-    df_filtrado = df.copy()
-
-if region_seleccionada != "🔥 Ver todo (Cualquier rincón del planeta)":
-    if region_seleccionada == "🔍 Buscar destino / ciudad específica...":
-        if destino_especifico_texto:
-            consulta = destino_especifico_texto.strip().lower()
+if region_filtro != "Cualquier rincón del mundo":
+    if region_filtro == "Búsqueda por destino exacto...":
+        if destino_busqueda:
+            consulta = destino_busqueda.strip().lower()
             df_filtrado = df_filtrado[
                 df_filtrado["destino"].str.lower().str.contains(consulta, na=False)
                 | df_filtrado["region"].str.lower().str.contains(consulta, na=False)
                 | df_filtrado["pais"].str.lower().str.contains(consulta, na=False)
             ]
     else:
-        region_clave = region_seleccionada.split(" (")[0]
-        df_filtrado = df_filtrado[df_filtrado["region"].str.startswith(region_clave)]
+        df_filtrado = df_filtrado[df_filtrado["region"] == region_filtro]
 
+df_filtrado = df_filtrado.sort_values(by="precio")
+
+# Grid visual de 3 columnas
 if not df_filtrado.empty:
-    df_filtrado = df_filtrado.sort_values(by="precio")
-
-# -----------------------------------------------------------------------------
-# 6. COMPONENTES VISUALES Y MAPA
-# -----------------------------------------------------------------------------
-if not df_filtrado.empty:
-    col1, col2 = st.columns([1, 1])
-
-    with col1:
-        st.subheader("🔥 Escapadas encontradas")
-        for _, row in df_filtrado.iterrows():
+    cols = st.columns(3)
+    for idx, (_, row) in enumerate(df_filtrado.iterrows()):
+        col = cols[idx % 3]
+        with col:
             st.markdown(f"""
-            <div class="card-dest">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin:0; color:#0F172A;">✈️ {row['destino']} ({row['pais']})</h3>
-                    <span class="badge-price">{row['precio']} €</span>
-                </div>
-                <p style="margin: 6px 0 0 0; color:#64748B;">
-                    📍 <b>Región:</b> {row['region']}<br>
-                    ⏱️ <b>Duración aconsejada:</b> {row['duracion']} | <b>Vuelo:</b> {row['tipo']}
-                </p>
-                <div style="margin-top: 8px;">
-                    <span class="badge-status">{row.get('proveedor', 'Tiempo Real')}</span>
+            <div class="destination-card">
+                <div class="card-image-container" style="background-image: url('{row['img']}');"></div>
+                <div class="card-content">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <h3 class="card-title">{row['destino']}</h3>
+                        <span class="price-tag">{row['precio']} €</span>
+                    </div>
+                    <div class="card-region">{row['pais']} · {row['duracion']}</div>
+                    <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 6px;">Vuelo {row['tipo']}</div>
+                    <div style="font-size: 0.75rem; color: #64748B; margin-top: 6px;">{row['fuente_precio']}</div>
+                    <a href="{row['url_reserva']}" target="_blank" class="booking-btn">CONSULTAR EN GOOGLE FLIGHTS</a>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-    with col2:
-        st.subheader("🗺️ Mapa Interactivo de Opciones")
-        st.map(df_filtrado[["lat", "lon"]], zoom=1)
-
-        st.subheader("📊 Tabla Comparativa")
-        st.dataframe(
-            df_filtrado[["destino", "pais", "precio", "duracion", "tipo"]],
-            use_container_width=True,
-            hide_index=True
-        )
+    st.markdown("---")
+    st.markdown("### Cobertura de rutas en mapa")
+    st.map(df_filtrado[["lat", "lon"]], zoom=1)
 else:
-    st.warning(f"No se encontraron escapadas por menos de {presupuesto_max}€ para el filtro seleccionado. Prueba a subir el presupuesto en el menú lateral.")
+    st.info("No hay rutas disponibles que coincidan exactamente con el presupuesto fijado. Aumenta el margen en el panel lateral.")
