@@ -5,7 +5,7 @@ import httpx
 from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
-# 1. CONFIGURACIÓN DE PÁGINA Y TEMAS (MINIMALISTA / AESTHETIC)
+# 1. CONFIGURACIÓN DE PÁGINA Y TEMAS (MINIMALISTA & AESTHETIC)
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="VAGABOND | Global Flight Finder",
@@ -210,7 +210,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. BASE DE DATOS GLOBAL DE DESTINOS
+# 2. CATÁLOGO GLOBAL EXTENDIDO (TODOS LOS CONTINENTES DEL MUNDO)
 # -----------------------------------------------------------------------------
 ORIGENES_GLOBALES = {
     "Europa": {
@@ -234,39 +234,39 @@ ORIGENES_GLOBALES = {
     }
 }
 
-CATALOGO_GLOBAL = [
-    {"destino": "Roma", "pais": "Italia", "continente": "Europa", "precio_base": 34, "duracion": "3 días", "dias_num": 3, "lat": 41.9028, "lon": 12.4964, "tipo": "Directo", "code": "FCO", "rating": 9.5, "img": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Oporto", "pais": "Portugal", "continente": "Europa", "precio_base": 22, "duracion": "3 días", "dias_num": 3, "lat": 41.1579, "lon": -8.6291, "tipo": "Directo", "code": "OPO", "rating": 9.2, "img": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Atenas", "pais": "Grecia", "continente": "Europa", "precio_base": 48, "duracion": "4 días", "dias_num": 4, "lat": 37.9838, "lon": 23.7275, "tipo": "Directo", "code": "ATH", "rating": 9.3, "img": "https://images.unsplash.com/photo-1533105079780-92b9be482077?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Reikiavik", "pais": "Islandia", "continente": "Europa", "precio_base": 115, "duracion": "4 días", "dias_num": 4, "lat": 64.1466, "lon": -21.9426, "tipo": "Directo", "code": "KEF", "rating": 9.6, "img": "https://images.unsplash.com/photo-1504893524553-b855bce32c67?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Cancún", "pais": "México", "continente": "América", "precio_base": 320, "duracion": "7 días", "dias_num": 7, "lat": 21.1619, "lon": -86.8515, "tipo": "1 escala", "code": "CUN", "rating": 8.9, "img": "https://images.unsplash.com/photo-1510097467424-192d713be8b2?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Nueva York", "pais": "Estados Unidos", "continente": "América", "precio_base": 280, "duracion": "6 días", "dias_num": 6, "lat": 40.7128, "lon": -74.0060, "tipo": "Directo", "code": "JFK", "rating": 9.7, "img": "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Río de Janeiro", "pais": "Brasil", "continente": "América", "precio_base": 490, "duracion": "8 días", "dias_num": 8, "lat": -22.9068, "lon": -43.1729, "tipo": "1 escala", "code": "GIG", "rating": 9.0, "img": "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Bangkok", "pais": "Tailandia", "continente": "Asia", "precio_base": 440, "duracion": "10 días", "dias_num": 10, "lat": 13.7563, "lon": 100.5018, "tipo": "1 escala", "code": "BKK", "rating": 9.5, "img": "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Tokio", "pais": "Japón", "continente": "Asia", "precio_base": 540, "duracion": "10 días", "dias_num": 10, "lat": 35.6762, "lon": 139.6503, "tipo": "1 escala", "code": "HND", "rating": 9.9, "img": "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Dubái", "pais": "EAU", "continente": "Asia", "precio_base": 210, "duracion": "4 días", "dias_num": 4, "lat": 25.2048, "lon": 55.2708, "tipo": "Directo", "code": "DXB", "rating": 8.8, "img": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Ciudad del Cabo", "pais": "Sudáfrica", "continente": "África", "precio_base": 460, "duracion": "9 días", "dias_num": 9, "lat": -33.9249, "lon": 18.4241, "tipo": "1 escala", "code": "CPT", "rating": 9.4, "img": "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "El Cairo", "pais": "Egipto", "continente": "África", "precio_base": 190, "duracion": "5 días", "dias_num": 5, "lat": 30.0444, "lon": 31.2357, "tipo": "Directo", "code": "CAI", "rating": 9.1, "img": "https://images.unsplash.com/photo-1572252009286-268acec5ca0a?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Sídney", "pais": "Australia", "continente": "Oceanía", "precio_base": 820, "duracion": "12 días", "dias_num": 12, "lat": -33.8688, "lon": 151.2093, "tipo": "2 escalas", "code": "SYD", "rating": 9.3, "img": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?q=80&w=800&auto=format&fit=crop"}
+CATALOGO_GLOBAL_MUNDIAL = [
+    # EUROPA
+    {"destino": "Roma", "pais": "Italia", "continente": "Europa", "precio_base": 34, "duracion": "3 días", "dias_num": 3, "tipo": "Directo", "code": "FCO", "rating": 9.5, "img": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Oporto", "pais": "Portugal", "continente": "Europa", "precio_base": 22, "duracion": "3 días", "dias_num": 3, "tipo": "Directo", "code": "OPO", "rating": 9.2, "img": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Atenas", "pais": "Grecia", "continente": "Europa", "precio_base": 48, "duracion": "4 días", "dias_num": 4, "tipo": "Directo", "code": "ATH", "rating": 9.3, "img": "https://images.unsplash.com/photo-1533105079780-92b9be482077?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Reikiavik", "pais": "Islandia", "continente": "Europa", "precio_base": 115, "duracion": "4 días", "dias_num": 4, "tipo": "Directo", "code": "KEF", "rating": 9.6, "img": "https://images.unsplash.com/photo-1504893524553-b855bce32c67?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Ibiza", "pais": "España", "continente": "Europa", "precio_base": 19, "duracion": "3 días", "dias_num": 3, "tipo": "Directo", "code": "IBZ", "rating": 8.7, "img": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Praga", "pais": "República Checa", "continente": "Europa", "precio_base": 39, "duracion": "3 días", "dias_num": 3, "tipo": "Directo", "code": "PRG", "rating": 9.4, "img": "https://images.unsplash.com/photo-1541849546-216549ae216d?q=80&w=800&auto=format&fit=crop"},
+    
+    # AMÉRICA
+    {"destino": "Cancún", "pais": "México", "continente": "América", "precio_base": 320, "duracion": "7 días", "dias_num": 7, "tipo": "1 escala", "code": "CUN", "rating": 8.9, "img": "https://images.unsplash.com/photo-1510097467424-192d713be8b2?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Nueva York", "pais": "Estados Unidos", "continente": "América", "precio_base": 280, "duracion": "6 días", "dias_num": 6, "tipo": "Directo", "code": "JFK", "rating": 9.7, "img": "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Río de Janeiro", "pais": "Brasil", "continente": "América", "precio_base": 490, "duracion": "8 días", "dias_num": 8, "tipo": "1 escala", "code": "GIG", "rating": 9.0, "img": "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Buenos Aires", "pais": "Argentina", "continente": "América", "precio_base": 510, "duracion": "9 días", "dias_num": 9, "tipo": "Directo", "code": "EZE", "rating": 9.2, "img": "https://images.unsplash.com/photo-1589909202802-8f4aadce1849?q=80&w=800&auto=format&fit=crop"},
+    
+    # ASIA Y ORIENTE
+    {"destino": "Bangkok", "pais": "Tailandia", "continente": "Asia", "precio_base": 440, "duracion": "10 días", "dias_num": 10, "tipo": "1 escala", "code": "BKK", "rating": 9.5, "img": "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Tokio", "pais": "Japón", "continente": "Asia", "precio_base": 540, "duracion": "10 días", "dias_num": 10, "tipo": "1 escala", "code": "HND", "rating": 9.9, "img": "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Dubái", "pais": "EAU", "continente": "Asia", "precio_base": 210, "duracion": "4 días", "dias_num": 4, "tipo": "Directo", "code": "DXB", "rating": 8.8, "img": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Bali", "pais": "Indonesia", "continente": "Asia", "precio_base": 495, "duracion": "10 días", "dias_num": 10, "tipo": "1 escala", "code": "DPS", "rating": 9.6, "img": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"},
+
+    # ÁFRICA Y CÁUCASO
+    {"destino": "Majachkalá", "pais": "Rusia / Cáucaso", "continente": "Cáucaso", "precio_base": 195, "duracion": "5 días", "dias_num": 5, "tipo": "1 escala", "code": "MCX", "rating": 8.9, "img": "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Ciudad del Cabo", "pais": "Sudáfrica", "continente": "África", "precio_base": 460, "duracion": "9 días", "dias_num": 9, "tipo": "1 escala", "code": "CPT", "rating": 9.4, "img": "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "El Cairo", "pais": "Egipto", "continente": "África", "precio_base": 190, "duracion": "5 días", "dias_num": 5, "tipo": "Directo", "code": "CAI", "rating": 9.1, "img": "https://images.unsplash.com/photo-1572252009286-268acec5ca0a?q=80&w=800&auto=format&fit=crop"},
+    
+    # OCEANÍA
+    {"destino": "Sídney", "pais": "Australia", "continente": "Oceanía", "precio_base": 820, "duracion": "12 días", "dias_num": 12, "tipo": "2 escalas", "code": "SYD", "rating": 9.3, "img": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?q=80&w=800&auto=format&fit=crop"}
 ]
 
 # -----------------------------------------------------------------------------
 # 3. MOTOR DE BÚSQUEDA EN TIEMPO REAL CON SERPAPI / FALLBACK
 # -----------------------------------------------------------------------------
-@st.cache_data(ttl=86400)
-def obtener_coordenadas_lugar(nombre_lugar):
-    try:
-        url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(nombre_lugar)}&format=json&limit=1"
-        headers = {"User-Agent": "VagabondAppAesthetic/7.0"}
-        response = httpx.get(url, headers=headers, timeout=5.0)
-        data = response.json()
-        if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
-    except Exception:
-        pass
-    return 20.0, 0.0
-
-
 def buscar_vuelo_google_flights_real(origen, destino_code):
     serpapi_key = st.secrets.get("SERPAPI_KEY", None)
     if not serpapi_key:
@@ -299,7 +299,7 @@ def buscar_vuelo_google_flights_real(origen, destino_code):
 # 4. BARRA LATERAL (FILTROS INDEPENDIENTES)
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("---")
-st.sidebar.markdown("### CONFIGURACIÓN")
+st.sidebar.markdown("### CONFIGURACIÓN DE BÚSQUEDA")
 
 continente_salida = st.sidebar.selectbox("Región de salida", list(ORIGENES_GLOBALES.keys()))
 pais_salida = st.sidebar.selectbox("País de salida", list(ORIGENES_GLOBALES[continente_salida].keys()))
@@ -308,7 +308,7 @@ ciudad_origen = st.sidebar.selectbox("Aeropuerto de salida", ORIGENES_GLOBALES[c
 codigo_iata = ciudad_origen.split("(")[-1].replace(")", "").strip() if "(" in ciudad_origen else "MAD"
 
 st.sidebar.markdown("---")
-filtro_continente = st.sidebar.selectbox("Filtrar continente de destino", ["Todos los continentes", "Europa", "América", "Asia", "África", "Oceanía"])
+filtro_continente = st.sidebar.selectbox("Filtrar continente de destino", ["Todos los continentes", "Europa", "América", "Asia", "África", "Cáucaso", "Oceanía"])
 
 duracion_filtro = st.sidebar.selectbox(
     "Duración del viaje",
@@ -316,7 +316,7 @@ duracion_filtro = st.sidebar.selectbox(
 )
 
 st.sidebar.markdown("---")
-presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 2000, 750, step=20)
+presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 2500, 800, step=20)
 
 # -----------------------------------------------------------------------------
 # 5. HEADER PRINCIPAL
@@ -336,7 +336,7 @@ fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
 fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
 
 vuelos_procesados = []
-for item in CATALOGO_GLOBAL:
+for item in CATALOGO_GLOBAL_MUNDIAL:
     item_copy = item.copy()
     precio_real = buscar_vuelo_google_flights_real(codigo_iata, item["code"])
     precio_final = precio_real if precio_real else item["precio_base"]
@@ -365,9 +365,9 @@ elif duracion_filtro == "Larga estancia (+8 días)":
     df_filtrado = df_filtrado[df_filtrado["dias_num"] > 8]
 
 # -----------------------------------------------------------------------------
-# 7. SECCIÓN 1: LOS 6 VIAJES MÁS BARATOS
+# 7. SECCIÓN 1: LOS 6 VIAJES MÁS BARATOS DEL MUNDO
 # -----------------------------------------------------------------------------
-st.markdown('<div class="section-title">Los 6 viajes más baratos</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Los 6 viajes más baratos del mundo</div>', unsafe_allow_html=True)
 
 if not df_filtrado.empty:
     top_6_baratos = df_filtrado.sort_values(by="precio").head(6)
@@ -395,7 +395,7 @@ else:
 st.markdown("---")
 
 # -----------------------------------------------------------------------------
-# 8. SECCIÓN 2: LOS 6 MEJORES CALIDAD-PRECIO
+# 8. SECCIÓN 2: LOS 6 MEJORES CALIDAD-PRECIO DEL MUNDO
 # -----------------------------------------------------------------------------
 st.markdown('<div class="section-title">Los 6 mejores en calidad - precio</div>', unsafe_allow_html=True)
 
@@ -420,15 +420,4 @@ if not df_filtrado.empty:
             </div>
             """, unsafe_allow_html=True)
 else:
-    st.info("No hay rutas disponibles para calcular la relación calidad-precio.")
-
-st.markdown("---")
-
-# -----------------------------------------------------------------------------
-# 9. SECCIÓN COMPLEMENTARIA: MAPA MUNDIAL DE COBERTURA (SECUNDARIO)
-# -----------------------------------------------------------------------------
-st.markdown('<div class="section-title">Distribución geográfica de opciones</div>', unsafe_allow_html=True)
-st.caption("Vista de cobertura de las rutas encontradas en el catálogo actual.")
-
-if not df_filtrado.empty:
-    st.map(df_filtrado[["lat", "lon"]], zoom=1)
+    st.info("No hay rutas disponibles para calcular la relación calidad-precio en este rango.")
