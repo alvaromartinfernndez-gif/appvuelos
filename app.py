@@ -4,7 +4,7 @@ import urllib.parse
 from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
-# 1. CONFIGURACIÓN DE PÁGINA Y TIPOGRAFÍAS ELEGANTES
+# 1. CONFIGURACIÓN DE PÁGINA Y ELEGANCIA VISUAL
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Vagabond | Escapadas Globales",
@@ -13,125 +13,116 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inyección de fuentes tipográficas y diseño sobrio mediante CSS
+# CSS visual premium
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
 
     html, body, [class*="css"] {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        color: #1E293B;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+        color: #0f172a;
     }
 
     .brand-header {
         font-family: 'Cinzel', serif;
-        font-size: 2.5rem;
+        font-size: 2.6rem;
+        letter-spacing: 0.16em;
         font-weight: 700;
-        letter-spacing: 2px;
-        color: #0F172A;
+        color: #0f172a;
         margin-bottom: 0.2rem;
         text-transform: uppercase;
     }
 
     .brand-sub {
-        font-size: 0.95rem;
-        color: #64748B;
+        font-size: 0.9rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #64748b;
         margin-bottom: 2rem;
-        font-weight: 300;
-        letter-spacing: 1px;
     }
 
     .destination-card {
-        background-color: #FFFFFF;
-        border-radius: 16px;
+        background: rgba(255,255,255,0.92);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 18px;
         overflow: hidden;
-        border: 1px solid #E2E8F0;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.06);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
-        margin-bottom: 1.8rem;
+        margin-bottom: 1.5rem;
     }
 
     .destination-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
     }
 
-    .card-image-container {
-        width: 100%;
-        height: 190px;
+    .card-image {
+        height: 200px;
         background-size: cover;
         background-position: center;
-        position: relative;
     }
 
-    .card-content {
-        padding: 1.25rem;
+    .card-body {
+        padding: 1.1rem 1rem 1.2rem;
     }
 
     .card-title {
         font-family: 'Cinzel', serif;
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #0F172A;
+        font-size: 1.35rem;
         margin: 0;
+        color: #0f172a;
     }
 
-    .card-region {
-        font-size: 0.8rem;
+    .card-meta {
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #64748B;
-        font-weight: 600;
-        margin-top: 2px;
+        color: #64748b;
+        margin-top: 0.35rem;
+        margin-bottom: 0.9rem;
     }
 
     .price-tag {
-        font-size: 1.4rem;
+        font-size: 1.7rem;
         font-weight: 700;
         color: #047857;
+    }
+
+    .pill {
+        font-size: 0.7rem;
+        font-weight: 600;
+        background: #ecfeff;
+        color: #0f766e;
+        border-radius: 999px;
+        padding: 0.35rem 0.6rem;
+        display: inline-block;
+        margin-top: 0.5rem;
     }
 
     .booking-btn {
         display: block;
-        width: 100%;
         text-align: center;
-        background-color: #0F172A;
-        color: #FFFFFF !important;
-        padding: 0.65rem 1rem;
-        border-radius: 8px;
+        background: #111827;
+        color: white !important;
         text-decoration: none !important;
-        font-weight: 600;
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
+        border-radius: 10px;
+        padding: 0.7rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
         margin-top: 1rem;
-        transition: background-color 0.2s;
     }
 
     .booking-btn:hover {
-        background-color: #047857;
-    }
-
-    .live-indicator {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.75rem;
-        color: #047857;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-    }
-
-    .dot {
-        width: 8px;
-        height: 8px;
-        background-color: #10B981;
-        border-radius: 50%;
+        background: #047857;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. CATÁLOGO GLOBAL Y FOTOGRAFÍAS PAISAJÍSTICAS DE ALTA RESOLUCIÓN
+# 2. ORÍGENES Y DESTINOS GLOBALIZADOS
 # -----------------------------------------------------------------------------
 ORIGENES_GLOBALES = {
     "Europa": {
@@ -214,10 +205,7 @@ DATA_DESTINOS = [
 # -----------------------------------------------------------------------------
 @st.cache_data(ttl=300)
 def consultar_vuelos_tiempo_real(origen_code):
-    """Consulta precios con fast-flights cuando está disponible.
-
-    Los precios de catálogo se usan como fallback y no son cotizaciones reales.
-    """
+    """Consulta precios con fast-flights si está disponible. Si no, usa precios de referencia."""
     vuelos_procesados = []
     fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
     fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
@@ -246,34 +234,22 @@ def consultar_vuelos_tiempo_real(origen_code):
                     item_data["fuente_precio"] = "fast-flights / Google Flights"
                 else:
                     item_data["precio"] = item["precio_base"]
-                    item_data["fuente_precio"] = "Precio de referencia (no cotización)"
+                    item_data["fuente_precio"] = "Precio de referencia"
             except Exception:
                 item_data["precio"] = item["precio_base"]
-                item_data["fuente_precio"] = "Precio de referencia (no cotización)"
+                item_data["fuente_precio"] = "Precio de referencia"
 
-            query_text = (
-                f"Flights to {item['destino']} from {origen_code} "
-                f"on {fecha_ida} through {fecha_vuelta}"
-            )
-            item_data["url_reserva"] = (
-                "https://www.google.com/travel/flights?q="
-                + urllib.parse.quote(query_text)
-            )
+            query_text = f"Flights to {item['destino']} from {origen_code} on {fecha_ida} through {fecha_vuelta}"
+            item_data["url_reserva"] = "https://www.google.com/travel/flights?q=" + urllib.parse.quote(query_text)
             vuelos_procesados.append(item_data)
 
-    except (ImportError, Exception):
+    except Exception:
         for item in DATA_DESTINOS:
             item_data = item.copy()
             item_data["precio"] = item["precio_base"]
-            item_data["fuente_precio"] = "Precio de referencia (no cotización)"
-            query_text = (
-                f"Flights to {item['destino']} from {origen_code} "
-                f"on {fecha_ida} through {fecha_vuelta}"
-            )
-            item_data["url_reserva"] = (
-                "https://www.google.com/travel/flights?q="
-                + urllib.parse.quote(query_text)
-            )
+            item_data["fuente_precio"] = "Precio de referencia"
+            query_text = f"Flights to {item['destino']} from {origen_code} on {fecha_ida} through {fecha_vuelta}"
+            item_data["url_reserva"] = "https://www.google.com/travel/flights?q=" + urllib.parse.quote(query_text)
             vuelos_procesados.append(item_data)
 
     return vuelos_procesados
@@ -306,15 +282,10 @@ presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 1000, 350, 
 # 5. PRESENTACIÓN VISUAL
 # -----------------------------------------------------------------------------
 st.markdown('<div class="brand-header">V A G A B O N D</div>', unsafe_allow_html=True)
-st.markdown(
-    f'<div class="brand-sub">Escapadas seleccionadas desde <b>{ciudad_origen}</b></div>',
-    unsafe_allow_html=True,
-)
+st.markdown(f'<div class="brand-sub">Escapadas seleccionadas desde <b>{ciudad_origen}</b></div>', unsafe_allow_html=True)
 
 st.markdown("""
-<div class="live-indicator">
-    <div class="dot"></div> Consulta de precios; pueden ser estimados y deben confirmarse con el proveedor
-</div>
+<div class="pill">Consulta de precios • puede requerir confirmación con el proveedor</div>
 """, unsafe_allow_html=True)
 st.write("")
 
@@ -336,7 +307,7 @@ if region_filtro != "Cualquier rincón del mundo":
 
 df_filtrado = df_filtrado.sort_values(by="precio")
 
-# Grid visual de 3 columnas
+# Visual cards
 if not df_filtrado.empty:
     cols = st.columns(3)
     for idx, (_, row) in enumerate(df_filtrado.iterrows()):
@@ -344,22 +315,22 @@ if not df_filtrado.empty:
         with col:
             st.markdown(f"""
             <div class="destination-card">
-                <div class="card-image-container" style="background-image: url('{row['img']}');"></div>
-                <div class="card-content">
-                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <div class="card-image" style="background-image: url('{row['img']}');"></div>
+                <div class="card-body">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;">
                         <h3 class="card-title">{row['destino']}</h3>
                         <span class="price-tag">{row['precio']} €</span>
                     </div>
-                    <div class="card-region">{row['pais']} · {row['duracion']}</div>
-                    <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 6px;">Vuelo {row['tipo']}</div>
-                    <div style="font-size: 0.75rem; color: #64748B; margin-top: 6px;">{row['fuente_precio']}</div>
-                    <a href="{row['url_reserva']}" target="_blank" class="booking-btn">CONSULTAR EN GOOGLE FLIGHTS</a>
+                    <div class="card-meta">{row['pais']} · {row['duracion']}</div>
+                    <div style="font-size: 0.8rem; color: #64748b;">Vuelo {row['tipo']}</div>
+                    <div class="pill">{row['fuente_precio']}</div>
+                    <a href="{row['url_reserva']}" target="_blank" class="booking-btn">Consultar vuelo</a>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("### Cobertura de rutas en mapa")
+    st.markdown("### Cobertura de rutas")
     st.map(df_filtrado[["lat", "lon"]], zoom=1)
 else:
-    st.info("No hay rutas disponibles que coincidan exactamente con el presupuesto fijado. Aumenta el margen en el panel lateral.")
+    st.info("No hay rutas disponibles que coincidan con este presupuesto. Intenta subir el límite en el panel lateral.")
