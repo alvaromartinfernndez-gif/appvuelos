@@ -1,6 +1,7 @@
-import html
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import random
+from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
 # 1. CONFIGURACIÓN DE LA PÁGINA
@@ -9,12 +10,11 @@ st.set_page_config(
     page_title="Global Flight Escape | Buscador de Escapadas",
     page_icon="✈️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="expanded"
 )
 
 # Estilos CSS personalizados para una interfaz moderna
-st.markdown(
-    """
+st.markdown("""
 <style>
     .main-title {
         font-size: 2.2rem;
@@ -42,13 +42,19 @@ st.markdown(
         font-weight: bold;
         font-size: 1.1rem;
     }
+    .badge-status {
+        background-color: #DBEAFE;
+        color: #1E40AF;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
 </style>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. BASE DE DATOS MUNDIAL DE ORÍGENES Y REGIONES DE DESTINO
+# 2. BASE DE DATOS MUNDIAL DE ORIGENES Y REGIONES DE DESTINO
 # -----------------------------------------------------------------------------
 ORIGENES_GLOBALL = {
     "Europa 🇪🇺": {
@@ -61,21 +67,21 @@ ORIGENES_GLOBALL = {
     "América del Norte 🌎": {
         "Estados Unidos": ["Nueva York (JFK)", "Los Ángeles (LAX)", "Miami (MIA)", "Chicago (ORD)"],
         "México": ["Ciudad de México (MEX)", "Cancún (CUN)", "Guadalajara (GDL)"],
-        "Canadá": ["Toronto (YYZ)", "Vancouver (YVR)", "Montreal (YUL)"],
+        "Canadá": ["Toronto (YYZ)", "Vancouver (YVR)", "Montreal (YUL)"]
     },
     "América del Sur 🌎": {
         "Colombia": ["Bogotá (BOG)", "Medellín (MDE)", "Cartagena (CTG)"],
         "Argentina": ["Buenos Aires (EZE)", "Mendoza (MDZ)", "Córdoba (COR)"],
         "Brasil": ["São Paulo (GRU)", "Río de Janeiro (GIG)"],
         "Chile": ["Santiago (SCL)"],
-        "Perú": ["Lima (LIM)"],
+        "Perú": ["Lima (LIM)"]
     },
     "Asia y Cáucaso 🌏": {
         "Japón": ["Tokio (HND)", "Osaka (KIX)"],
         "Rusia / Cáucaso": ["Moscú (SVO)", "Majachkalá / Daguestán (MCX)", "Sochi (AER)"],
         "Tailandia": ["Bangkok (BKK)", "Phuket (HKT)"],
-        "EAU": ["Dubái (DXB)", "Abu Dabi (AUH)"],
-    },
+        "EAU": ["Dubái (DXB)", "Abu Dabi (AUH)"]
+    }
 }
 
 REGIONES_DESTINO = [
@@ -88,38 +94,86 @@ REGIONES_DESTINO = [
     "❄️ Nórdicos y Auroras (Reikiavik, Oslo, Rovaniemi...)",
     "🏖️ Islas Mediterráneas (Ibiza, Mikonos, Cerdeña, Malta...)",
     "🌺 Polinesia e Islas del Pacífico (Fiyi, Tahití...)",
-    "🔍 Buscar destino / ciudad específica...",
+    "🔍 Buscar destino / ciudad específica..."
+]
+
+DATA_BASE_DESTINOS = [
+    {"destino": "Roma", "region": "🏰 Europa de Escapada", "pais": "Italia", "precio_base": 35, "duracion": "3 días", "lat": 41.9028, "lon": 12.4964, "tipo": "Directo", "code": "FCO"},
+    {"destino": "Oporto", "region": "🏰 Europa de Escapada", "pais": "Portugal", "precio_base": 24, "duracion": "3 días", "lat": 41.1579, "lon": -8.6291, "tipo": "Directo", "code": "OPO"},
+    {"destino": "Cancún / El Caribe", "region": "🏝️ El Caribe (Cancún, Punta Cana, La Habana, San Andrés...)", "pais": "México", "precio_base": 320, "duracion": "7 días", "lat": 21.1619, "lon": -86.8515, "tipo": "1 Escala", "code": "CUN"},
+    {"destino": "Punta Cana / El Caribe", "region": "🏝️ El Caribe (Cancún, Punta Cana, La Habana, San Andrés...)", "pais": "Rep. Dominicana", "precio_base": 380, "duracion": "8 días", "lat": 18.5601, "lon": -68.3725, "tipo": "1 Escala", "code": "PUJ"},
+    {"destino": "Majachkalá / Daguestán", "region": "⛰️ Daguestán y Cáucaso (Majachkalá, Derbent, Tblisi...)", "pais": "Rusia", "precio_base": 190, "duracion": "5 días", "lat": 42.9849, "lon": 47.5046, "tipo": "1 Escala", "code": "MCX"},
+    {"destino": "Derbent / Daguestán", "region": "⛰️ Daguestán y Cáucaso (Majachkalá, Derbent, Tblisi...)", "pais": "Rusia", "precio_base": 210, "duracion": "6 días", "lat": 42.0678, "lon": 48.2899, "tipo": "1 Escala", "code": "MCX"},
+    {"destino": "Bangkok", "region": "🌴 Sudeste Asiático (Bangkok, Bali, Phuket, Vietnam...)", "pais": "Tailandia", "precio_base": 450, "duracion": "10 días", "lat": 13.7563, "lon": 100.5018, "tipo": "1 Escala", "code": "BKK"},
+    {"destino": "Bali", "region": "🌴 Sudeste Asiático (Bangkok, Bali, Phuket, Vietnam...)", "pais": "Indonesia", "precio_base": 520, "duracion": "12 días", "lat": -8.4095, "lon": 115.1889, "tipo": "1 Escala", "code": "DPS"},
+    {"destino": "Dubái", "region": "🏜️ Medio Oriente y Desiertos (Dubái, Petra, El Cairo...)", "pais": "EAU", "precio_base": 210, "duracion": "4 días", "lat": 25.2048, "lon": 55.2708, "tipo": "Directo", "code": "DXB"},
+    {"destino": "Reikiavik", "region": "❄️ Nórdicos y Auroras (Reikiavik, Oslo, Rovaniemi...)", "pais": "Islandia", "precio_base": 115, "duracion": "4 días", "lat": 64.1466, "lon": -21.9426, "tipo": "Directo", "code": "KEF"},
+    {"destino": "Ibiza", "region": "🏖️ Islas Mediterráneas (Ibiza, Mikonos, Cerdeña, Malta...)", "pais": "España", "precio_base": 18, "duracion": "3 días", "lat": 38.9067, "lon": 1.4206, "tipo": "Directo", "code": "IBZ"},
+    {"destino": "Bora Bora", "region": "🌺 Polinesia e Islas del Pacífico (Fiyi, Tahití...)", "pais": "Polinesia Fr.", "precio_base": 980, "duracion": "10 días", "lat": -16.5004, "lon": -151.7415, "tipo": "2 Escalas", "code": "BOB"}
 ]
 
 # -----------------------------------------------------------------------------
-# 3. DATOS DE EJEMPLO (NO SON PRECIOS EN TIEMPO REAL)
+# 3. MOTOR DE BÚSQUEDA DUAL (LIBRERÍA PRINCIPAL + FALLBACK)
 # -----------------------------------------------------------------------------
-DATA_SIMULADA = [
-    {"destino": "Roma", "region": "🏰 Europa de Escapada", "pais": "Italia", "precio": 35, "duracion": "3 días", "lat": 41.9028, "lon": 12.4964, "tipo": "Directo"},
-    {"destino": "Oporto", "region": "🏰 Europa de Escapada", "pais": "Portugal", "precio": 24, "duracion": "3 días", "lat": 41.1579, "lon": -8.6291, "tipo": "Directo"},
-    {"destino": "Cancún / El Caribe", "region": "🏝️ El Caribe (Cancún, Punta Cana, La Habana, San Andrés...)", "pais": "México", "precio": 320, "duracion": "7 días", "lat": 21.1619, "lon": -86.8515, "tipo": "1 Escala"},
-    {"destino": "Punta Cana / El Caribe", "region": "🏝️ El Caribe (Cancún, Punta Cana, La Habana, San Andrés...)", "pais": "Rep. Dominicana", "precio": 380, "duracion": "8 días", "lat": 18.5601, "lon": -68.3725, "tipo": "1 Escala"},
-    {"destino": "Majachkalá / Daguestán", "region": "⛰️ Daguestán y Cáucaso (Majachkalá, Derbent, Tblisi...)", "pais": "Rusia", "precio": 190, "duracion": "5 días", "lat": 42.9849, "lon": 47.5046, "tipo": "1 Escala"},
-    {"destino": "Derbent / Daguestán", "region": "⛰️ Daguestán y Cáucaso (Majachkalá, Derbent, Tblisi...)", "pais": "Rusia", "precio": 210, "duracion": "6 días", "lat": 42.0678, "lon": 48.2899, "tipo": "1 Escala"},
-    {"destino": "Bangkok", "region": "🌴 Sudeste Asiático (Bangkok, Bali, Phuket, Vietnam...)", "pais": "Tailandia", "precio": 450, "duracion": "10 días", "lat": 13.7563, "lon": 100.5018, "tipo": "1 Escala"},
-    {"destino": "Bali", "region": "🌴 Sudeste Asiático (Bangkok, Bali, Phuket, Vietnam...)", "pais": "Indonesia", "precio": 520, "duracion": "12 días", "lat": -8.4095, "lon": 115.1889, "tipo": "1 Escala"},
-    {"destino": "Dubái", "region": "🏜️ Medio Oriente y Desiertos (Dubái, Petra, El Cairo...)", "pais": "EAU", "precio": 210, "duracion": "4 días", "lat": 25.2048, "lon": 55.2708, "tipo": "Directo"},
-    {"destino": "Reikiavik", "region": "❄️ Nórdicos y Auroras (Reikiavik, Oslo, Rovaniemi...)", "pais": "Islandia", "precio": 115, "duracion": "4 días", "lat": 64.1466, "lon": -21.9426, "tipo": "Directo"},
-    {"destino": "Ibiza", "region": "🏖️ Islas Mediterráneas (Ibiza, Mikonos, Cerdeña, Malta...)", "pais": "España", "precio": 18, "duracion": "3 días", "lat": 38.9067, "lon": 1.4206, "tipo": "Directo"},
-    {"destino": "Bora Bora", "region": "🌺 Polinesia e Islas del Pacífico (Fiyi, Tahití...)", "pais": "Polinesia Fr.", "precio": 980, "duracion": "10 días", "lat": -16.5004, "lon": -151.7415, "tipo": "2 Escalas"},
-]
+def obtener_vuelos_tiempo_real(origen_code):
+    """
+    Intenta obtener vuelos usando 'fast-flights' (Google Flights).
+    Si falla, usa precios de demostración con una variación aleatoria.
+    """
+    vuelos_resultado = []
+    fecha_proxima = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+
+    # INTENTO 1: fast-flights
+    try:
+        from fast_flights import FlightData, Passengers, search_airline
+
+        for item in DATA_BASE_DESTINOS[:4]:
+            try:
+                res = search_airline(
+                    flight_data=[FlightData(date=fecha_proxima, from_airport=origen_code, to_airport=item["code"])],
+                    trip="one-way",
+                    passengers=Passengers(adults=1),
+                    currency="EUR"
+                )
+                if res and res.flights:
+                    precio_real = int(res.flights[0].price)
+                    item_copy = item.copy()
+                    item_copy["precio"] = precio_real
+                    item_copy["proveedor"] = "Google Flights (fast-flights)"
+                    vuelos_resultado.append(item_copy)
+            except Exception:
+                continue
+
+        if vuelos_resultado:
+            return vuelos_resultado, "🟢 Resultados obtenidos con fast-flights"
+
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
+    # INTENTO 2: datos de demostración; no son precios en tiempo real
+    for item in DATA_BASE_DESTINOS:
+        item_copy = item.copy()
+        variacion = random.randint(-8, 12)
+        item_copy["precio"] = max(15, item_copy["precio_base"] + variacion)
+        item_copy["proveedor"] = "Precio de demostración (estimación aleatoria)"
+        vuelos_resultado.append(item_copy)
+
+    if vuelos_resultado:
+        return vuelos_resultado, "🟡 Modo de demostración activo (los precios no son reales)"
+
+    return [], "⚪ No hay resultados disponibles"
 
 # -----------------------------------------------------------------------------
-# 4. BARRA LATERAL (FILTROS DE ORIGEN Y DESTINO)
+# 4. BARRA LATERAL (FILTROS DE ORIGEN Y DESTINO GLOBAL)
 # -----------------------------------------------------------------------------
 st.sidebar.title("✈️ Configura tu Viaje")
 
 st.sidebar.subheader("1. Origen (Cualquier lugar)")
 continente_sel = st.sidebar.selectbox("Continente de salida:", list(ORIGENES_GLOBALL.keys()))
 pais_sel = st.sidebar.selectbox("País de salida:", list(ORIGENES_GLOBALL[continente_sel].keys()))
-ciudad_origen_sel = st.sidebar.selectbox(
-    "Aeropuerto / Ciudad de origen:", ORIGENES_GLOBALL[continente_sel][pais_sel]
-)
+ciudad_origen_sel = st.sidebar.selectbox("Aeropuerto / Ciudad de origen:", ORIGENES_GLOBALL[continente_sel][pais_sel])
 
 origen_manual = st.sidebar.checkbox("¿No está tu ciudad? Escribir origen manual")
 if origen_manual:
@@ -127,41 +181,36 @@ if origen_manual:
 else:
     ciudad_origen_final = ciudad_origen_sel
 
+if "(" in ciudad_origen_final and ")" in ciudad_origen_final:
+    codigo_origen_iata = ciudad_origen_final.split("(")[-1].replace(")", "").strip()
+else:
+    codigo_origen_iata = "MAD"
+
 st.sidebar.markdown("---")
 st.sidebar.subheader("2. Destino o Región Específica")
 region_seleccionada = st.sidebar.selectbox("Selecciona región objetivo:", REGIONES_DESTINO)
 
 destino_especifico_texto = ""
 if region_seleccionada == "🔍 Buscar destino / ciudad específica...":
-    destino_especifico_texto = st.sidebar.text_input(
-        "Introduce ciudad, región o país exacto (ej. Daguestán, San Andrés):", "Daguestán"
-    )
+    destino_especifico_texto = st.sidebar.text_input("Introduce ciudad, región o país exacto:", "Daguestán")
 
 st.sidebar.markdown("---")
 presupuesto_max = st.sidebar.slider("Presupuesto máximo por vuelo (€):", 10, 1000, 300, step=10)
 
 # -----------------------------------------------------------------------------
-# 5. FILTRADO Y PRESENTACIÓN DE RESULTADOS
+# 5. EJECUCIÓN Y MOSTRADO DE RESULTADOS
 # -----------------------------------------------------------------------------
 st.markdown('<div class="main-title">🌍 Buscador Global de Escapadas</div>', unsafe_allow_html=True)
-st.markdown(
-    f'<div class="sub-title">Buscando ofertas con salida desde <b>{html.escape(ciudad_origen_final)}</b></div>',
-    unsafe_allow_html=True,
-)
+st.markdown(f'<div class="sub-title">Buscando las mejores ofertas con salida desde <b>{ciudad_origen_final}</b></div>', unsafe_allow_html=True)
 
-try:
-    amadeus_key = st.secrets.get("AMADEUS_CLIENT_ID")
-except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError):
-    amadeus_key = None
+lista_vuelos, estado_motor = obtener_vuelos_tiempo_real(codigo_origen_iata)
+st.caption(estado_motor)
 
-if amadeus_key:
-    st.info("🔑 Credencial de Amadeus configurada. La búsqueda sigue usando datos de ejemplo; aún no está conectada a la API.")
+df = pd.DataFrame(lista_vuelos)
+if not df.empty:
+    df_filtrado = df[df["precio"] <= presupuesto_max].copy()
 else:
-    st.caption("ℹ️ Modo de demostración: los precios y destinos mostrados son datos de ejemplo, no ofertas en tiempo real.")
-
-# Filtrar datos de ejemplo
-_df = pd.DataFrame(DATA_SIMULADA)
-df_filtrado = _df[_df["precio"] <= presupuesto_max]
+    df_filtrado = df.copy()
 
 if region_seleccionada != "🔥 Ver todo (Cualquier rincón del planeta)":
     if region_seleccionada == "🔍 Buscar destino / ciudad específica...":
@@ -173,15 +222,15 @@ if region_seleccionada != "🔥 Ver todo (Cualquier rincón del planeta)":
                 | df_filtrado["pais"].str.lower().str.contains(consulta, na=False)
             ]
     else:
-        # La etiqueta visible incluye ejemplos entre paréntesis; buscar por el nombre
-        # de la región permite encontrar los datos de ejemplo asociados.
+        # Comparar con el nombre de región, sin los ejemplos entre paréntesis.
         region_clave = region_seleccionada.split(" (")[0]
         df_filtrado = df_filtrado[df_filtrado["region"].str.startswith(region_clave)]
 
-df_filtrado = df_filtrado.sort_values(by="precio")
+if not df_filtrado.empty:
+    df_filtrado = df_filtrado.sort_values(by="precio")
 
 # -----------------------------------------------------------------------------
-# 6. RESULTADOS VISUALES
+# 6. COMPONENTES VISUALES Y MAPA
 # -----------------------------------------------------------------------------
 if not df_filtrado.empty:
     col1, col2 = st.columns([1, 1])
@@ -189,21 +238,21 @@ if not df_filtrado.empty:
     with col1:
         st.subheader("🔥 Escapadas encontradas")
         for _, row in df_filtrado.iterrows():
-            st.markdown(
-                f"""
+            st.markdown(f"""
             <div class="card-dest">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin:0; color:#0F172A;">✈️ {html.escape(row['destino'])} ({html.escape(row['pais'])})</h3>
+                    <h3 style="margin:0; color:#0F172A;">✈️ {row['destino']} ({row['pais']})</h3>
                     <span class="badge-price">{row['precio']} €</span>
                 </div>
                 <p style="margin: 6px 0 0 0; color:#64748B;">
-                    📍 <b>Región:</b> {html.escape(row['region'])}<br>
-                    ⏱️ <b>Duración aconsejada:</b> {html.escape(row['duracion'])} | <b>Vuelo:</b> {html.escape(row['tipo'])}
+                    📍 <b>Región:</b> {row['region']}<br>
+                    ⏱️ <b>Duración aconsejada:</b> {row['duracion']} | <b>Vuelo:</b> {row['tipo']}
                 </p>
+                <div style="margin-top: 8px;">
+                    <span class="badge-status">{row.get('proveedor', 'Tiempo Real')}</span>
+                </div>
             </div>
-            """,
-                unsafe_allow_html=True,
-            )
+            """, unsafe_allow_html=True)
 
     with col2:
         st.subheader("🗺️ Mapa Interactivo de Opciones")
@@ -213,10 +262,7 @@ if not df_filtrado.empty:
         st.dataframe(
             df_filtrado[["destino", "pais", "precio", "duracion", "tipo"]],
             use_container_width=True,
-            hide_index=True,
+            hide_index=True
         )
 else:
-    st.warning(
-        f"No se encontraron escapadas por menos de {presupuesto_max}€ para el filtro seleccionado. "
-        "Prueba a subir el presupuesto en el menú lateral."
-    )
+    st.warning(f"No se encontraron escapadas por menos de {presupuesto_max}€ para el filtro seleccionado. Prueba a subir el presupuesto en el menú lateral.")
