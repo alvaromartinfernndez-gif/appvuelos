@@ -151,10 +151,10 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. MOTORES MULTIMODALES EN TIEMPO REAL
+# 2. CONSULTAS EN TIEMPO REAL & GENERADOR DE ENLACES DINÁMICOS
 # -----------------------------------------------------------------------------
-def obtener_vuelo_real(origen, destino_code):
-    """Consulta directa a Google Flights en tiempo real mediante SerpApi."""
+def obtener_vuelo_real(origen_code, destino_code):
+    """Consulta exacta a Google Flights pasando el código del aeropuerto seleccionado."""
     serpapi_key = st.secrets.get("SERPAPI_KEY", None)
     if not serpapi_key:
         return None
@@ -166,7 +166,7 @@ def obtener_vuelo_real(origen, destino_code):
         url = "https://serpapi.com/search.json"
         params = {
             "engine": "google_flights",
-            "departure_id": origen,
+            "departure_id": origen_code,
             "arrival_id": destino_code,
             "outbound_date": fecha_ida,
             "return_date": fecha_vuelta,
@@ -182,22 +182,22 @@ def obtener_vuelo_real(origen, destino_code):
         pass
     return None
 
-def generar_enlace_multimodal(tipo, origen_nombre, destino_nombre):
-    """Genera el enlace parametrizado directo para la reserva en tiempo real según medio de transporte."""
+def generar_enlace_dinamico(tipo_transporte, origen_nombre, destino_nombre):
+    """Genera la URL exacta conectada al origen seleccionado por el usuario."""
     q_origen = urllib.parse.quote(origen_nombre)
     q_destino = urllib.parse.quote(destino_nombre)
     
-    if "Avión" in tipo:
+    if "Avión" in tipo_transporte:
         return f"https://www.google.com/travel/flights?q=Vuelos%20desde%20{q_origen}%20a%20{q_destino}"
-    elif "Tren" in tipo or "Autobús" in tipo:
+    elif "Tren" in tipo_transporte or "Autobús" in tipo_transporte:
         return f"https://www.thetrainline.com/es/busqueda/{q_origen}/{q_destino}"
     else:
         return f"https://www.blablacar.es/search?fn={q_origen}&tn={q_destino}"
 
 # -----------------------------------------------------------------------------
-# 3. BASE DE DATOS DE CHOLLOS Y BASE MULTIMODAL
+# 3. ORIGENES Y CATÁLOGO DE RUTAS MULTIMODALES
 # -----------------------------------------------------------------------------
-ORIGENES = {
+ORIGENES_DISPONIBLES = {
     "Madrid": "MAD",
     "Barcelona": "BCN",
     "Valencia": "VLC",
@@ -206,26 +206,27 @@ ORIGENES = {
     "Bilbao": "BIO"
 }
 
-ALERTAS_BASE = [
-    # TREN & AUTOBÚS (Nacional & Europa)
-    {"destino": "Valencia", "pais": "España", "transporte": "Tren de Alta Velocidad (Iryo / Ouigo)", "code": "VLC", "precio_habitual": 45, "precio_chollo": 9, "operador": "Iryo", "tipo_cat": "Tren"},
-    {"destino": "París", "pais": "Francia", "transporte": "Autobús Larga Distancia", "code": "PAR", "precio_habitual": 65, "precio_chollo": 19, "operador": "FlixBus", "tipo_cat": "Autobús"},
-    {"destino": "Barcelona", "pais": "España", "transporte": "Tren Alta Velocidad", "code": "BCN", "precio_habitual": 59, "precio_chollo": 15, "operador": "Ouigo", "tipo_cat": "Tren"},
-    {"destino": "Oporto", "pais": "Portugal", "transporte": "Autobús Nocturno", "code": "OPO", "precio_habitual": 40, "precio_chollo": 12, "operador": "Alsa / FlixBus", "tipo_cat": "Autobús"},
+ALERTAS_CATALOGO = [
+    # TREN & AUTOBÚS
+    {"destino": "Valencia", "pais": "España", "transporte": "Tren de Alta Velocidad (Iryo / Ouigo)", "code": "VLC", "precio_habitual": 45, "precio_chollo": 9, "tipo_cat": "Tren"},
+    {"destino": "París", "pais": "Francia", "transporte": "Autobús Larga Distancia", "code": "PAR", "precio_habitual": 65, "precio_chollo": 19, "tipo_cat": "Autobús"},
+    {"destino": "Barcelona", "pais": "España", "transporte": "Tren Alta Velocidad", "code": "BCN", "precio_habitual": 59, "precio_chollo": 15, "tipo_cat": "Tren"},
+    {"destino": "Oporto", "pais": "Portugal", "transporte": "Autobús Nocturno", "code": "OPO", "precio_habitual": 40, "precio_chollo": 12, "tipo_cat": "Autobús"},
+    {"destino": "Sevilla", "pais": "España", "transporte": "Tren Alta Velocidad", "code": "SVQ", "precio_habitual": 50, "precio_chollo": 14, "tipo_cat": "Tren"},
     
     # AVIONES (Google Flights Real-Time)
-    {"destino": "Roma", "pais": "Italia", "transporte": "Avión (Vuelo Directo)", "code": "FCO", "precio_habitual": 120, "precio_chollo": 24, "operador": "Ryanair / Wizz", "tipo_cat": "Avión"},
-    {"destino": "Londres", "pais": "Reino Unido", "transporte": "Avión (Vuelo Directo)", "code": "STN", "precio_habitual": 110, "precio_chollo": 18, "operador": "Ryanair", "tipo_cat": "Avión"},
-    {"destino": "Dubái", "pais": "EAU", "transporte": "Avión (Directo)", "code": "DXB", "precio_habitual": 450, "precio_chollo": 189, "operador": "Wizz Air", "tipo_cat": "Avión"},
-    {"destino": "Nueva York", "pais": "EE.UU.", "transporte": "Avión (Ida y Vuelta)", "code": "JFK", "precio_habitual": 520, "precio_chollo": 240, "operador": "Iberia / LEVEL", "tipo_cat": "Avión"}
+    {"destino": "Roma", "pais": "Italia", "transporte": "Avión (Vuelo Directo)", "code": "FCO", "precio_habitual": 120, "precio_chollo": 24, "tipo_cat": "Avión"},
+    {"destino": "Londres", "pais": "Reino Unido", "transporte": "Avión (Vuelo Directo)", "code": "STN", "precio_habitual": 110, "precio_chollo": 18, "tipo_cat": "Avión"},
+    {"destino": "Dubái", "pais": "EAU", "transporte": "Avión (Directo)", "code": "DXB", "precio_habitual": 450, "precio_chollo": 189, "tipo_cat": "Avión"},
+    {"destino": "Nueva York", "pais": "EE.UU.", "transporte": "Avión (Ida y Vuelta)", "code": "JFK", "precio_habitual": 520, "precio_chollo": 240, "tipo_cat": "Avión"}
 ]
 
 # -----------------------------------------------------------------------------
-# 4. BARRA LATERAL (FILTROS DE ALERTAS)
+# 4. BARRA LATERAL (ORIGEN DINÁMICO)
 # -----------------------------------------------------------------------------
-st.sidebar.markdown("### ORIGEN DE TUS VIAJES")
-origen_seleccionado = st.sidebar.selectbox("Ciudad de Salida", list(ORIGENES.keys()))
-codigo_origen = ORIGENES[origen_seleccionado]
+st.sidebar.markdown("### ORIGEN DEL VIAJE")
+origen_seleccionado = st.sidebar.selectbox("Ciudad de Salida", list(ORIGENES_DISPONIBLES.keys()), index=0)
+codigo_origen_actual = ORIGENES_DISPONIBLES[origen_seleccionado]
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### FILTRAR MEDIOS DE TRANSPORTE")
@@ -236,57 +237,60 @@ filtro_transporte = st.sidebar.multiselect(
 )
 
 st.sidebar.markdown("---")
-presupuesto_alerta = st.sidebar.slider("Alerta si el billete cuesta menos de (€)", 5, 300, 50, step=5)
+presupuesto_alerta = st.sidebar.slider("Alerta si el billete cuesta menos de (€)", 5, 300, 60, step=5)
 
 # -----------------------------------------------------------------------------
-# 5. PANEL PRINCIPAL DE ALERTAS EN TIEMPO REAL
+# 5. RENDERIZADO DINÁMICO SEGÚN ORIGEN SELECCIONADO
 # -----------------------------------------------------------------------------
 st.markdown('<div class="brand-header">V A G A B O N D</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="brand-sub">Radar de Alertas en Tiempo Real desde <b>{origen_seleccionado}</b></div>', unsafe_allow_html=True)
 
 serp_activa = "SERPAPI_KEY" in st.secrets
 if serp_activa:
-    st.markdown('<div class="status-live"><div class="pulse-dot"></div> Monitoreo multimodal en tiempo real conectado</div>', unsafe_allow_html=True)
-else:
-    st.caption("ℹ️ Modo Alerta Directa: Haz clic en cualquier chollo para comprobar la tarifa exacta en vivo.")
+    st.markdown('<div class="status-live"><div class="pulse-dot"></div> Monitoreo multimodal en vivo desde ' + origen_seleccionado + '</div>', unsafe_allow_html=True)
 
 st.write("")
-st.markdown("### 🔔 Chollos Detectados Ahora Mismo")
+st.markdown(f"### 🔔 Chollos desde {origen_seleccionado}")
 
-# Filtrado y procesamiento
-chollos_encontrados = []
-for item in ALERTAS_BASE:
-    # Comprobar si el medio de transporte está seleccionado
+chollos_filtrados = []
+
+for item in ALERTAS_CATALOGO:
+    # Ignorar si el origen seleccionado es igual al destino (ej. salir de Madrid ir a Madrid)
+    if item["destino"].lower() == origen_seleccionado.lower():
+        continue
+        
+    # Filtrar por tipo de transporte elegido
     if not any(t in item["transporte"] for t in filtro_transporte):
         continue
         
-    precio_mostrar = item["precio_chollo"]
+    precio_final = item["precio_chollo"]
     
-    # Si es avión y SerpApi está configurado, obtener precio real en tiempo real
+    # Recalcular tarifa real en tiempo real según el origen actual de la barra lateral
     if item["tipo_cat"] == "Avión" and serp_activa:
-        precio_api = obtener_vuelo_real(codigo_origen, item["code"])
+        precio_api = obtener_vuelo_real(codigo_origen_actual, item["code"])
         if precio_api:
-            precio_mostrar = precio_api
+            precio_final = precio_api
 
-    # Evaluar si es un chollo (bajo el presupuesto máximo fijado)
-    if precio_mostrar <= presupuesto_alerta:
-        url_directa = generar_enlace_multimodal(item["transporte"], origen_seleccionado, item["destino"])
-        descuento = int(((item["precio_habitual"] - precio_mostrar) / item["precio_habitual"]) * 100)
+    # Evaluar umbral de presupuesto
+    if precio_final <= presupuesto_alerta:
+        # Generar URL apuntando exactamente a la ciudad de origen elegida
+        url_dinamica = generar_enlace_dinamico(item["transporte"], origen_seleccionado, item["destino"])
+        desc = int(((item["precio_habitual"] - precio_final) / item["precio_habitual"]) * 100)
         
-        chollos_encontrados.append({
+        chollos_filtrados.append({
             "destino": item["destino"],
             "pais": item["pais"],
             "transporte": item["transporte"],
-            "precio": precio_mostrar,
+            "precio": precio_final,
             "precio_habitual": item["precio_habitual"],
-            "descuento": max(descuento, 10),
-            "url": url_directa
+            "descuento": max(desc, 10),
+            "url": url_dinamica
         })
 
-# Renderizar alertas en cuadrícula
-if chollos_encontrados:
+# Renderizar en tarjeta
+if chollos_filtrados:
     cols = st.columns(2)
-    for idx, chollo in enumerate(chollos_encontrados):
+    for idx, chollo in enumerate(chollos_filtrados):
         col = cols[idx % 2]
         with col:
             st.markdown(f"""
@@ -302,8 +306,8 @@ if chollos_encontrados:
                         -{chollo['descuento']}% DESCUENTO
                     </span>
                 </div>
-                <a href="{chollo['url']}" target="_blank" class="action-btn">RESERVAR BILLETE EN VIVO</a>
+                <a href="{chollo['url']}" target="_blank" class="action-btn">VER BILLETE DESDE {origen_seleccionado.upper()}</a>
             </div>
             """, unsafe_allow_html=True)
 else:
-    st.info(f"No hay alertas de chollos activas por debajo de {presupuesto_alerta}€ para los medios de transporte seleccionados. Aumenta el umbral en la barra lateral.")
+    st.info(f"No hay alertas de chollos activas saliendo desde {origen_seleccionado} por debajo de {presupuesto_alerta}€. Incrementa el límite en el panel lateral.")
