@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import pydeck as pdk
 import urllib.parse
 import httpx
 from datetime import datetime, timedelta
@@ -19,7 +18,7 @@ st.sidebar.markdown("### Apariencia")
 tema_elegido = st.sidebar.radio("Modo de pantalla", ["Claro ☀️", "Oscuro 🌙"], index=0)
 
 # -----------------------------------------------------------------------------
-# 2. DESIGN SYSTEM & CSS (SOPORTE COMPLETO PARA MODO CLARO Y OSCURO)
+# 2. DEFINICIÓN DE ESTILOS CSS SEGÚN TEMA
 # -----------------------------------------------------------------------------
 if tema_elegido == "Oscuro 🌙":
     bg_app = "#0F172A"
@@ -32,12 +31,9 @@ if tema_elegido == "Oscuro 🌙":
     btn_text = "#0F172A"
     btn_hover = "#0284C7"
     price_color = "#34D399"
-    hero_bg = "#1E293B"
-    hero_border = "#38BDF8"
     shadow = "rgba(0, 0, 0, 0.4)"
     input_bg = "#334155"
     input_text = "#F8FAFC"
-    map_style = "mapbox://styles/mapbox/dark-v10"
 else:
     bg_app = "#F8FAFC"
     bg_sidebar = "#FFFFFF"
@@ -49,12 +45,9 @@ else:
     btn_text = "#FFFFFF"
     btn_hover = "#047857"
     price_color = "#047857"
-    hero_bg = "#FFFFFF"
-    hero_border = "#047857"
     shadow = "rgba(0, 0, 0, 0.06)"
     input_bg = "#FFFFFF"
     input_text = "#0F172A"
-    map_style = "mapbox://styles/mapbox/light-v10"
 
 st.markdown(f"""
 <style>
@@ -209,7 +202,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. BASE DE DATOS MUNDIAL AMPLIADA
+# 3. BASE DE DATOS MUNDIAL COMPLETA
 # -----------------------------------------------------------------------------
 ORIGENES_GLOBALES = {
     "Europa": {
@@ -245,28 +238,28 @@ REGIONES_DESTINO = [
 ]
 
 DATA_DESTINOS_BASE = [
-    {"destino": "Roma", "region": "Capitales Europeas", "pais": "Italia", "precio_base": 34, "duracion": "3 días", "dias_num": 3, "lat": 41.9028, "lon": 12.4964, "tipo": "Directo", "code": "FCO", "valoracion": 9.5, "img": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Oporto", "region": "Capitales Europeas", "pais": "Portugal", "precio_base": 22, "duracion": "3 días", "dias_num": 3, "lat": 41.1579, "lon": -8.6291, "tipo": "Directo", "code": "OPO", "valoracion": 9.2, "img": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Cancún", "region": "Caribe & Playas Tropicales", "pais": "México", "precio_base": 340, "duracion": "7 días", "dias_num": 7, "lat": 21.1619, "lon": -86.8515, "tipo": "1 escala", "code": "CUN", "valoracion": 8.8, "img": "https://images.unsplash.com/photo-1510097467424-192d713be8b2?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Majachkalá", "region": "Cáucaso & Daguestán", "pais": "Rusia / Cáucaso", "precio_base": 195, "duracion": "5 días", "dias_num": 5, "lat": 42.9849, "lon": 47.5046, "tipo": "1 escala", "code": "MCX", "valoracion": 8.9, "img": "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Bangkok", "region": "Sudeste Asiático", "pais": "Tailandia", "precio_base": 460, "duracion": "10 días", "dias_num": 10, "lat": 13.7563, "lon": 100.5018, "tipo": "1 escala", "code": "BKK", "valoracion": 9.6, "img": "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Dubái", "region": "Oriente Medio & Desierto", "pais": "EAU", "precio_base": 220, "duracion": "4 días", "dias_num": 4, "lat": 25.2048, "lon": 55.2708, "tipo": "Directo", "code": "DXB", "valoracion": 8.7, "img": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Reikiavik", "region": "Nórdicos & Auroras Boreales", "pais": "Islandia", "precio_base": 125, "duracion": "4 días", "dias_num": 4, "lat": 64.1466, "lon": -21.9426, "tipo": "Directo", "code": "KEF", "valoracion": 9.4, "img": "https://images.unsplash.com/photo-1504893524553-b855bce32c67?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Ibiza", "region": "Islas del Mediterráneo", "pais": "España", "precio_base": 19, "duracion": "3 días", "dias_num": 3, "lat": 38.9067, "lon": 1.4206, "tipo": "Directo", "code": "IBZ", "valoracion": 8.5, "img": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Tokio", "region": "Sudeste Asiático", "pais": "Japón", "precio_base": 580, "duracion": "10 días", "dias_num": 10, "lat": 35.6762, "lon": 139.6503, "tipo": "1 escala", "code": "HND", "valoracion": 9.8, "img": "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Ciudad del Cabo", "region": "Cualquier rincón del mundo", "pais": "Sudáfrica", "precio_base": 490, "duracion": "9 días", "dias_num": 9, "lat": -33.9249, "lon": 18.4241, "tipo": "1 escala", "code": "CPT", "valoracion": 9.3, "img": "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Sídney", "region": "Cualquier rincón del mundo", "pais": "Australia", "precio_base": 890, "duracion": "12 días", "dias_num": 12, "lat": -33.8688, "lon": 151.2093, "tipo": "2 escalas", "code": "SYD", "valoracion": 9.1, "img": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?q=80&w=800&auto=format&fit=crop"},
-    {"destino": "Río de Janeiro", "region": "Caribe & Playas Tropicales", "pais": "Brasil", "precio_base": 510, "duracion": "8 días", "dias_num": 8, "lat": -22.9068, "lon": -43.1729, "tipo": "1 escala", "code": "GIG", "valoracion": 8.9, "img": "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=800&auto=format&fit=crop"}
+    {"destino": "Roma", "region": "Capitales Europeas", "pais": "Italia", "precio_base": 34, "duracion": "3 días", "dias_num": 3, "lat": 41.9028, "lon": 12.4964, "tipo": "Directo", "code": "FCO", "rating": 9.5, "img": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Oporto", "region": "Capitales Europeas", "pais": "Portugal", "precio_base": 22, "duracion": "3 días", "dias_num": 3, "lat": 41.1579, "lon": -8.6291, "tipo": "Directo", "code": "OPO", "rating": 9.2, "img": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Cancún", "region": "Caribe & Playas Tropicales", "pais": "México", "precio_base": 340, "duracion": "7 días", "dias_num": 7, "lat": 21.1619, "lon": -86.8515, "tipo": "1 escala", "code": "CUN", "rating": 8.8, "img": "https://images.unsplash.com/photo-1510097467424-192d713be8b2?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Majachkalá", "region": "Cáucaso & Daguestán", "pais": "Rusia / Cáucaso", "precio_base": 195, "duracion": "5 días", "dias_num": 5, "lat": 42.9849, "lon": 47.5046, "tipo": "1 escala", "code": "MCX", "rating": 8.9, "img": "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Bangkok", "region": "Sudeste Asiático", "pais": "Tailandia", "precio_base": 460, "duracion": "10 días", "dias_num": 10, "lat": 13.7563, "lon": 100.5018, "tipo": "1 escala", "code": "BKK", "rating": 9.6, "img": "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Dubái", "region": "Oriente Medio & Desierto", "pais": "EAU", "precio_base": 220, "duracion": "4 días", "dias_num": 4, "lat": 25.2048, "lon": 55.2708, "tipo": "Directo", "code": "DXB", "rating": 8.7, "img": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Reikiavik", "region": "Nórdicos & Auroras Boreales", "pais": "Islandia", "precio_base": 125, "duracion": "4 días", "dias_num": 4, "lat": 64.1466, "lon": -21.9426, "tipo": "Directo", "code": "KEF", "rating": 9.4, "img": "https://images.unsplash.com/photo-1504893524553-b855bce32c67?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Ibiza", "region": "Islas del Mediterráneo", "pais": "España", "precio_base": 19, "duracion": "3 días", "dias_num": 3, "lat": 38.9067, "lon": 1.4206, "tipo": "Directo", "code": "IBZ", "rating": 8.5, "img": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Tokio", "region": "Sudeste Asiático", "pais": "Japón", "precio_base": 580, "duracion": "10 días", "dias_num": 10, "lat": 35.6762, "lon": 139.6503, "tipo": "1 escala", "code": "HND", "rating": 9.8, "img": "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Ciudad del Cabo", "region": "Cualquier rincón del mundo", "pais": "Sudáfrica", "precio_base": 490, "duracion": "9 días", "dias_num": 9, "lat": -33.9249, "lon": 18.4241, "tipo": "1 escala", "code": "CPT", "rating": 9.3, "img": "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Sídney", "region": "Cualquier rincón del mundo", "pais": "Australia", "precio_base": 890, "duracion": "12 días", "dias_num": 12, "lat": -33.8688, "lon": 151.2093, "tipo": "2 escalas", "code": "SYD", "rating": 9.1, "img": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?q=80&w=800&auto=format&fit=crop"},
+    {"destino": "Río de Janeiro", "region": "Caribe & Playas Tropicales", "pais": "Brasil", "precio_base": 510, "duracion": "8 días", "dias_num": 8, "lat": -22.9068, "lon": -43.1729, "tipo": "1 escala", "code": "GIG", "rating": 8.9, "img": "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=800&auto=format&fit=crop"}
 ]
 
 # -----------------------------------------------------------------------------
-# 4. GEOCODIFICACIÓN Y BÚSQUEDA EN TIEMPO REAL
+# 4. GEOCODIFICACIÓN & BÚSQUEDA EN TIEMPO REAL
 # -----------------------------------------------------------------------------
 @st.cache_data(ttl=86400)
 def obtener_coordenadas_lugar(nombre_lugar):
     try:
         url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(nombre_lugar)}&format=json&limit=1"
-        headers = {"User-Agent": "VagabondAppGlobal/4.0"}
+        headers = {"User-Agent": "VagabondApp/5.0"}
         response = httpx.get(url, headers=headers, timeout=6.0)
         data = response.json()
         if data:
@@ -305,7 +298,7 @@ def buscar_vuelo_google_flights_real(origen, destino_code):
     return None
 
 # -----------------------------------------------------------------------------
-# 5. CONTROLES LATERALES
+# 5. CONTROLES DE BARRA LATERAL
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Configuración de búsqueda")
@@ -321,7 +314,7 @@ region_filtro = st.sidebar.selectbox("Filtro de Destino", REGIONES_DESTINO)
 
 destino_busqueda = ""
 if region_filtro == "Búsqueda por destino exacto...":
-    destino_busqueda = st.sidebar.text_input("Escribe cualquier ciudad o punto del planeta:", "Daguestán")
+    destino_busqueda = st.sidebar.text_input("Escribe cualquier ciudad o territorio mundial:", "Daguestán")
 
 st.sidebar.markdown("---")
 duracion_filtro = st.sidebar.selectbox(
@@ -330,10 +323,10 @@ duracion_filtro = st.sidebar.selectbox(
 )
 
 st.sidebar.markdown("---")
-presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 3000, 600, step=20)
+presupuesto_max = st.sidebar.slider("Presupuesto máximo (€)", 10, 3000, 650, step=20)
 
 # -----------------------------------------------------------------------------
-# 6. PROCESAMIENTO Y MOTOR DE MAPA INTERACTIVO GLOBAL
+# 6. PROCESAMIENTO GENERAL
 # -----------------------------------------------------------------------------
 destinos_a_procesar = DATA_DESTINOS_BASE.copy()
 
@@ -350,7 +343,7 @@ if region_filtro == "Búsqueda por destino exacto..." and destino_busqueda.strip
         "lon": lon_geo,
         "tipo": "Directo / 1 escala",
         "code": destino_busqueda.upper()[:3],
-        "valoracion": 9.0,
+        "rating": 9.0,
         "img": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=800&auto=format&fit=crop"
     }
     destinos_a_procesar.insert(0, destino_personalizado)
@@ -360,11 +353,11 @@ st.markdown('<div class="brand-header">V A G A B O N D</div>', unsafe_allow_html
 st.markdown(f'<div class="brand-sub">Explorador Global de Vuelos desde <b>{ciudad_origen}</b></div>', unsafe_allow_html=True)
 
 if "SERPAPI_KEY" in st.secrets:
-    st.markdown('<div class="live-indicator"><div class="dot"></div> Conexión en vivo con Google Flights API</div>', unsafe_allow_html=True)
+    st.markdown('<div class="live-indicator"><div class="dot"></div> Datos en vivo conectados a Google Flights API</div>', unsafe_allow_html=True)
 
 st.write("")
 
-# Consultar tarifas en tiempo real
+# Calcular precios y ratios de calidad-precio
 fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
 fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
 
@@ -372,11 +365,12 @@ vuelos_procesados = []
 for item in destinos_a_procesar:
     item_copy = item.copy()
     precio_real = buscar_vuelo_google_flights_real(codigo_iata, item["code"])
-    item_copy["precio"] = precio_real if precio_real else item["precio_base"]
+    precio_final = precio_real if precio_real else item["precio_base"]
+    item_copy["precio"] = precio_final
     
-    # Cálculo del Score de Calidad-Precio (Mayor valoración + Vuelo Directo - Precio Proporcional)
-    bonus_directo = 1.2 if item["tipo"] == "Directo" else 1.0
-    item_copy["score_calidad_precio"] = round((item_copy["valoracion"] * 100 * bonus_directo) / item_copy["precio"], 2)
+    # Algoritmo de Calidad-Precio (Rating sobre precio ajustado por escalas)
+    mult_directo = 1.25 if item["tipo"] == "Directo" else 1.0
+    item_copy["score_cp"] = round(((item["rating"] * 100) * mult_directo) / precio_final, 2)
     
     item_copy["url_reserva"] = f"https://www.google.com/travel/flights?q=Flights%20to%20{urllib.parse.quote(item['destino'])}%20from%20{codigo_iata}%20on%20{fecha_ida}%20through%20{fecha_vuelta}"
     vuelos_procesados.append(item_copy)
@@ -405,98 +399,68 @@ elif duracion_filtro == "Gran viaje (+8 días)":
     df_filtrado = df_filtrado[df_filtrado["dias_num"] > 8]
 
 # -----------------------------------------------------------------------------
-# 7. MAPA INTERACTIVO GLOBAL MULTI-SELECCIÓN (PYDECK)
+# 7. MAPA GLOBAL ESTABLE (ST.MAP)
 # -----------------------------------------------------------------------------
-st.markdown("### 🌍 Mapa Global Interactivo (Haz clic o pasa el cursor por cualquier destino)")
-
+st.markdown("### 🗺️ Cobertura Global de Rutas")
 if not df_filtrado.empty:
-    # Capa de puntos dinámicos en el mapa mundial
-    layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=df_filtrado,
-        get_position=["lon", "lat"],
-        get_color="[4, 120, 87, 220]" if tema_elegido == "Claro ☀️" else "[56, 189, 248, 220]",
-        get_radius=180000,
-        pickable=True,
-        auto_highlight=True
-    )
-
-    view_state = pdk.ViewState(
-        latitude=df_filtrado["lat"].mean(),
-        longitude=df_filtrado["lon"].mean(),
-        zoom=1.3,
-        pitch=20
-    )
-
-    deck_map = pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        map_style=map_style,
-        tooltip={
-            "html": "<b>{destino} ({pais})</b><br/>Precio: <b>{precio} €</b><br/>Vuelo: {tipo} ({duracion})",
-            "style": {"backgroundColor": card_bg, "color": text_main, "fontSize": "13px"}
-        }
-    )
-
-    # Render del mapa con captura de selección por clic
-    map_event = st.pydeck_chart(deck_map, on_select="rerun", selection_mode="single-object")
-
-    # Si el usuario hace clic en una marca del mapa, filtra exactamente ese destino
-    if map_event and map_event.selection and map_event.selection.get("objects"):
-        selected_obj = map_event.selection["objects"]["ScatterplotLayer"][0]
-        df_filtrado = df_filtrado[df_filtrado["destino"] == selected_obj["destino"]]
-        st.success(f"📍 Destino seleccionado directamente desde el mapa: **{selected_obj['destino']}**")
+    st.map(df_filtrado[["lat", "lon"]], zoom=1)
 
 st.markdown("---")
 
 # -----------------------------------------------------------------------------
-# 8. PRESENTACIÓN: 6 MÁS BARATOS vs 6 MEJORES CALIDAD-PRECIO
+# 8. PANEL 1: LOS 6 VUELOS MÁS BARATOS
 # -----------------------------------------------------------------------------
+st.markdown("## 📉 Los 6 Vuelos Más Baratos")
+
 if not df_filtrado.empty:
-    tab_baratos, tab_calidad_precio = st.tabs(["📉 Los 6 Vuelos Más Baratos", "✨ Los 6 Mejores Calidad-Precio"])
-
-    # TAB 1: TOP 6 MÁS BARATOS
-    with tab_baratos:
-        top_6_baratos = df_filtrado.sort_values(by="precio").head(6)
-        cols = st.columns(3)
-        for idx, (_, row) in enumerate(top_6_baratos.iterrows()):
-            col = cols[idx % 3]
-            with col:
-                st.markdown(f"""
-                <div class="destination-card">
-                    <div class="card-image-container" style="background-image: url('{row['img']}');"></div>
-                    <div class="card-content">
-                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                            <h3 class="card-title">{row['destino']}</h3>
-                            <span class="price-tag">{row['precio']} €</span>
-                        </div>
-                        <div class="card-region">{row['pais']} · {row['duracion']}</div>
-                        <div style="font-size: 0.8rem; color: {text_sub} !important; margin-top: 6px;">Vuelo {row['tipo']}</div>
-                        <a href="{row['url_reserva']}" target="_blank" class="booking-btn">RESERVAR EN GOOGLE FLIGHTS</a>
+    top_6_baratos = df_filtrado.sort_values(by="precio").head(6)
+    cols_baratos = st.columns(3)
+    for idx, (_, row) in enumerate(top_6_baratos.iterrows()):
+        col = cols_baratos[idx % 3]
+        with col:
+            st.markdown(f"""
+            <div class="destination-card">
+                <div class="card-image-container" style="background-image: url('{row['img']}');"></div>
+                <div class="card-content">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <h3 class="card-title">{row['destino']}</h3>
+                        <span class="price-tag">{row['precio']} €</span>
                     </div>
+                    <div class="card-region">{row['pais']} · {row['duracion']}</div>
+                    <div style="font-size: 0.8rem; color: {text_sub} !important; margin-top: 6px;">Vuelo {row['tipo']}</div>
+                    <a href="{row['url_reserva']}" target="_blank" class="booking-btn">RESERVAR EN GOOGLE FLIGHTS</a>
                 </div>
-                """, unsafe_allow_html=True)
-
-    # TAB 2: TOP 6 MEJOR CALIDAD-PRECIO
-    with tab_calidad_precio:
-        top_6_calidad = df_filtrado.sort_values(by="score_calidad_precio", ascending=False).head(6)
-        cols_calidad = st.columns(3)
-        for idx, (_, row) in enumerate(top_6_calidad.iterrows()):
-            col = cols_calidad[idx % 3]
-            with col:
-                st.markdown(f"""
-                <div class="destination-card" style="border: 2px solid {price_color};">
-                    <div class="card-image-container" style="background-image: url('{row['img']}');"></div>
-                    <div class="card-content">
-                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                            <h3 class="card-title">{row['destino']}</h3>
-                            <span class="price-tag">{row['precio']} €</span>
-                        </div>
-                        <div class="card-region">{row['pais']} · Rating {row['valoracion']}/10</div>
-                        <div style="font-size: 0.8rem; color: {text_sub} !important; margin-top: 6px;">Vuelo {row['tipo']} ({row['duracion']})</div>
-                        <a href="{row['url_reserva']}" target="_blank" class="booking-btn">RESERVAR EN GOOGLE FLIGHTS</a>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            </div>
+            """, unsafe_allow_html=True)
 else:
-    st.info("No hay rutas que coincidan exactamente con estos filtros. Aumenta el presupuesto o ajusta la duración en el panel lateral.")
+    st.info("No hay rutas en este rango de precios.")
+
+st.markdown("---")
+
+# -----------------------------------------------------------------------------
+# 9. PANEL 2: LOS 6 MEJORES CALIDAD-PRECIO
+# -----------------------------------------------------------------------------
+st.markdown("## ✨ Los 6 Mejores en Calidad-Precio")
+
+if not df_filtrado.empty:
+    top_6_calidad = df_filtrado.sort_values(by="score_cp", ascending=False).head(6)
+    cols_calidad = st.columns(3)
+    for idx, (_, row) in enumerate(top_6_calidad.iterrows()):
+        col = cols_calidad[idx % 3]
+        with col:
+            st.markdown(f"""
+            <div class="destination-card">
+                <div class="card-image-container" style="background-image: url('{row['img']}');"></div>
+                <div class="card-content">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <h3 class="card-title">{row['destino']}</h3>
+                        <span class="price-tag">{row['precio']} €</span>
+                    </div>
+                    <div class="card-region">{row['pais']} · Valoración {row['rating']}/10</div>
+                    <div style="font-size: 0.8rem; color: {text_sub} !important; margin-top: 6px;">Vuelo {row['tipo']} ({row['duracion']})</div>
+                    <a href="{row['url_reserva']}" target="_blank" class="booking-btn">RESERVAR EN GOOGLE FLIGHTS</a>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+else:
+    st.info("Ajusta el margen de presupuesto en la barra lateral para calcular ofertas de calidad-precio.")
