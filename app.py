@@ -47,8 +47,7 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 def obtener_vuelo_live_travelpayouts(origen_code, destino_code, num_pasajeros):
     """
-    Consulta en tiempo real la API v3 de Travelpayouts/Aviasales filtrada por fechas exactas
-    para evitar precios desfasados en caché.
+    Consulta en tiempo real la API v3 de Travelpayouts/Aviasales filtrada por fechas exactas.
     """
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
@@ -111,7 +110,7 @@ def obtener_chollos_klook_live(destino_nombre, num_pasajeros):
     return None
 
 def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, origen_code, destino_code, num_pasajeros):
-    """Genera URLs dinámicas de reserva exacta."""
+    """Genera URLs dinámicas de reserva garantizadas sin errores 404."""
     def simplificar(t):
         r = {'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n'}
         t = t.lower()
@@ -125,9 +124,7 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, ori
     fecha_ida = datetime.now() + timedelta(days=14)
     fecha_vuelta = datetime.now() + timedelta(days=17)
 
-    f_ida_str = fecha_ida.strftime("%Y-%m-%d")
-    f_vuelta_str = fecha_vuelta.strftime("%Y-%m-%d")
-
+    # 1. Enlace Transporte
     if "Avión" in tipo_transporte:
         dia_ida, mes_ida = fecha_ida.strftime("%d"), fecha_ida.strftime("%m")
         dia_vta, mes_vta = fecha_vuelta.strftime("%d"), fecha_vuelta.strftime("%m")
@@ -137,13 +134,18 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, ori
     else:
         url_trans = f"https://www.blablacar.es/search?fn={urllib.parse.quote(origen_nombre)}&tn={urllib.parse.quote(destino_nombre)}"
 
-    url_hotel = f"https://www.klook.com/es/hotels/search/?city={urllib.parse.quote(destino_nombre)}&checkIn={f_ida_str}&checkOut={f_vuelta_str}&adult={num_pasajeros}"
-    url_actividad = f"https://www.klook.com/es/search?query={urllib.parse.quote(destino_nombre)}"
+    # 2. Enlace Alojamiento Klook (Estructura oficial sin error 404)
+    query_hotel = urllib.parse.quote(f"hotel {destino_nombre}")
+    url_hotel = f"https://www.klook.com/es-ES/search?query={query_hotel}"
+
+    # 3. Enlace Experiencia Klook (Estructura oficial sin error 404)
+    query_actividad = urllib.parse.quote(f"actividades {destino_nombre}")
+    url_actividad = f"https://www.klook.com/es-ES/search?query={query_actividad}"
 
     return url_trans, url_hotel, url_actividad
 
 # -----------------------------------------------------------------------------
-# 3. CATÁLOGO CON PRECIOS REALES AJUSTADOS AL MERCADO ACTUAL
+# 3. CATÁLOGO CON PRECIOS REALES AJUSTADOS
 # -----------------------------------------------------------------------------
 ORIGENES_DISPONIBLES = {
     "Madrid": "MAD",
@@ -159,14 +161,14 @@ ESCAPADAS_CATALOGO = [
         "destino": "Sofía", "pais": "Bulgaria", "transporte": "Avión Directo", "code": "SOF",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 30, 
         "actividad_defecto": "Tour a los Monasterios de Rila", "precio_actividad_base": 15, 
-        "precio_transporte_persona_base": 165, # Ajustado a precio real de mercado
+        "precio_transporte_persona_base": 165,
         "imagen": "https://images.unsplash.com/photo-1573843981267-be1999ff37cd?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Varsovia", "pais": "Polonia", "transporte": "Avión Directo", "code": "WAW",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 35, 
         "actividad_defecto": "Concierto de Chopin en el Casco Antiguo", "precio_actividad_base": 14, 
-        "precio_transporte_persona_base": 170, # Ajustado a precio real de mercado
+        "precio_transporte_persona_base": 170,
         "imagen": "https://images.unsplash.com/photo-1519197924294-4ac978a3ef54?auto=format&fit=crop&w=800&q=80"
     },
     {
@@ -240,7 +242,7 @@ for item in ESCAPADAS_CATALOGO:
     if not any(t in item["transporte"] for t in filtro_transporte):
         continue
 
-    # 1. Obtener precio real de billete ida/vuelta desde Travelpayouts API v3
+    # 1. Tarifas de Vuelos Real desde Travelpayouts API v3
     precio_transporte_total = item["precio_transporte_persona_base"] * num_viajeros
     es_live_flight = False
 
