@@ -151,7 +151,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. CONSULTAS EN TIEMPO REAL Y GENERADOR DE ENLACES CON OMIO
+# 2. CONSULTAS EN TIEMPO REAL Y GENERADOR DE ENLACES CON OMIO CORREGIDO
 # -----------------------------------------------------------------------------
 def obtener_vuelo_real(origen_code, destino_code):
     """Consulta exacta a Google Flights pasando el código del aeropuerto seleccionado."""
@@ -184,10 +184,18 @@ def obtener_vuelo_real(origen_code, destino_code):
 
 def generar_enlace_dinamico(tipo_transporte, origen_nombre, destino_nombre):
     """
-    Construye URLs deep-link 100% compatibles usando Omio para trenes y autobuses.
+    Construye URLs deep-link 100% compatibles con Omio (vía /viajes/origen/destino),
+    Google Flights y BlaBlaCar.
     """
-    q_origen = urllib.parse.quote(origen_nombre)
-    q_destino = urllib.parse.quote(destino_nombre)
+    def simplificar_texto(texto):
+        remplazos = {'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n'}
+        t = texto.lower()
+        for k, v in remplazos.items():
+            t = t.replace(k, v)
+        return t.strip().replace(" ", "-")
+
+    origen_slug = simplificar_texto(origen_nombre)
+    destino_slug = simplificar_texto(destino_nombre)
     
     fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
     fecha_vuelta = (datetime.now() + timedelta(days=18)).strftime("%Y-%m-%d")
@@ -197,11 +205,11 @@ def generar_enlace_dinamico(tipo_transporte, origen_nombre, destino_nombre):
         return f"https://www.google.com/travel/flights?q={urllib.parse.quote(query_vuelo)}"
     
     elif "Tren" in tipo_transporte or "Autobús" in tipo_transporte:
-        # Omio busca Renfe, Iryo, Ouigo, Alsa y FlixBus sin necesidad de API Key
-        return f"https://www.omio.es/search-frontend/results?origin={q_origen}&destination={q_destino}&departureDate={fecha_ida}"
+        # Enlace directo de Omio funcional sin provocar pantallas de error 404
+        return f"https://www.omio.es/viajes/{origen_slug}/{destino_slug}"
     
     else:
-        return f"https://www.blablacar.es/search?fn={q_origen}&tn={q_destino}"
+        return f"https://www.blablacar.es/search?fn={urllib.parse.quote(origen_nombre)}&tn={urllib.parse.quote(destino_nombre)}"
 
 # -----------------------------------------------------------------------------
 # 3. ORIGENES Y CATÁLOGO DE RUTAS MULTIMODALES
