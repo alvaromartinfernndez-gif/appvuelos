@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import urllib.parse
 import httpx
-import time
 from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
@@ -43,16 +42,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. MOTORES EN TIEMPO REAL (TRAVELPAYOUTS FLEXIBLE LIVE FLIGHTS & KLOOK)
+# 2. MOTORES EN TIEMPO REAL CON VALIDACIÓN ANTI-CACHE CORRUPTA
 # -----------------------------------------------------------------------------
-def obtener_vuelo_live_travelpayouts(origen_code, destino_code, num_pasajeros):
+def obtener_vuelo_live_validado(origen_code, destino_code, num_pasajeros, precio_referencia_persona):
     """
-    Escanea la API v3 de Travelpayouts sin encasillar la vuelta a una sola fecha,
-    obteniendo el precio MÁS BARATO disponible en vivo para ida y vuelta.
+    Consulta la API v3 de Travelpayouts pero valida que el precio no sea un dato
+    obsoleto o irreal (ej. 30€ por un vuelo internacional ida/vuelta).
     """
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
         return None, None, None
+
+    fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+    fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
 
     try:
         url = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
@@ -60,31 +62,30 @@ def obtener_vuelo_live_travelpayouts(origen_code, destino_code, num_pasajeros):
         params = {
             "origin": origen_code,
             "destination": destino_code,
+            "departure_at": fecha_ida,
+            "return_at": fecha_vuelta,
             "unique": "true",
             "sorting": "price",
             "currency": "EUR",
-            "limit": 10
+            "limit": 5
         }
-        resp = httpx.get(url, headers=headers, params=params, timeout=7.0)
+        resp = httpx.get(url, headers=headers, params=params, timeout=6.0)
         data = resp.json()
 
         if data.get("success") and "data" in data and len(data["data"]) > 0:
-            # Obtener la oferta con el precio mínimo absoluto
-            oferta_chollo = min(data["data"], key=lambda x: float(x.get("price", 99999)))
-            precio_persona = float(oferta_chollo["price"])
+            precio_api_persona = float(data["data"][0]["price"])
             
-            f_departure = oferta_chollo.get("departure_at", "")[:10]
-            f_return = oferta_chollo.get("return_at", "")[:10]
-            
-            return precio_persona * num_pasajeros, f_departure, f_return
+            # Filtro de sanidad: descartar si es sospechosamente bajo (menos del 65% de la tarifa media)
+            if precio_api_persona >= (precio_referencia_persona * 0.65):
+                f_ida = data["data"][0].get("departure_at", "")[:10]
+                f_vta = data["data"][0].get("return_at", "")[:10]
+                return precio_api_persona * num_pasajeros, f_ida, f_vta
     except Exception:
         pass
     return None, None, None
 
 def obtener_chollos_klook_live(destino_nombre, num_pasajeros):
-    """
-    Consulta la API de Klook para extraer la experiencia más económica.
-    """
+    """Consulta la API de Klook para extraer la experiencia más económica."""
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
         return None
@@ -117,7 +118,7 @@ def obtener_chollos_klook_live(destino_nombre, num_pasajeros):
     return None
 
 def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, origen_code, destino_code, num_pasajeros, f_ida_api=None, f_vuelta_api=None, url_klook_actividad_api=None):
-    """Genera URLs dinámicas directas sincronizadas con las fechas exactas del chollo."""
+    """Genera URLs dinámicas directas sincronizadas."""
     def simplificar(t):
         r = {'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n'}
         t = t.lower()
@@ -161,7 +162,7 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, ori
     return url_trans, url_hotel, url_actividad
 
 # -----------------------------------------------------------------------------
-# 3. CATÁLOGO CON DESTINOS Y TARIFAS BASE
+# 3. CATÁLOGO CON TARIFAS BASE REALES DE MERCADO (IDA Y VUELTA COMPLETO)
 # -----------------------------------------------------------------------------
 ORIGENES_DISPONIBLES = {
     "Madrid": "MAD",
@@ -175,30 +176,30 @@ ORIGENES_DISPONIBLES = {
 ESCAPADAS_CATALOGO = [
     {
         "destino": "Sofía", "pais": "Bulgaria", "transporte": "Avión Directo", "code": "SOF",
-        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 30, 
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 35, 
         "actividad_defecto": "Tour a los Monasterios de Rila", "precio_actividad_base": 15, 
-        "precio_transporte_persona_base": 120,
+        "precio_transporte_persona_base": 160,  # Tarifa real media A/V
         "imagen": "https://images.unsplash.com/photo-1573843981267-be1999ff37cd?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Varsovia", "pais": "Polonia", "transporte": "Avión Directo", "code": "WAW",
-        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 35, 
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 38, 
         "actividad_defecto": "Concierto de Chopin en el Casco Antiguo", "precio_actividad_base": 14, 
-        "precio_transporte_persona_base": 110,
+        "precio_transporte_persona_base": 165,  # Tarifa real media A/V
         "imagen": "https://images.unsplash.com/photo-1519197924294-4ac978a3ef54?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Oporto", "pais": "Portugal", "transporte": "Autobús Nocturno / Tren", "code": "OPO",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 32, 
         "actividad_defecto": "Crucero de los 6 Puentes por el Duero", "precio_actividad_base": 15, 
-        "precio_transporte_persona_base": 28,
+        "precio_transporte_persona_base": 30,
         "imagen": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Fez", "pais": "Marruecos", "transporte": "Avión Directo", "code": "FEZ",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 25, 
         "actividad_defecto": "Visita Guiada por la Medina Histórica", "precio_actividad_base": 12, 
-        "precio_transporte_persona_base": 45,
+        "precio_transporte_persona_base": 70,   # Tarifa real media A/V
         "imagen": "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80"
     },
     {
@@ -212,7 +213,7 @@ ESCAPADAS_CATALOGO = [
         "destino": "Roma", "pais": "Italia", "transporte": "Avión Directo", "code": "FCO",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 45, 
         "actividad_defecto": "Visita Guiada Coliseo y Foro Romano", "precio_actividad_base": 30, 
-        "precio_transporte_persona_base": 85,
+        "precio_transporte_persona_base": 125,  # Tarifa real media A/V
         "imagen": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80"
     }
 ]
@@ -227,7 +228,7 @@ codigo_origen_actual = ORIGENES_DISPONIBLES[origen_seleccionado]
 num_viajeros = st.sidebar.number_input("Número de Viajeros 👤", min_value=1, max_value=8, value=2, step=1)
 
 st.sidebar.markdown("---")
-presupuesto_total_pack = st.sidebar.slider(f"Presupuesto MÁXIMO Pack Total ({num_viajeros} p) (€)", 100, 2000, 600, step=25)
+presupuesto_total_pack = st.sidebar.slider(f"Presupuesto MÁXIMO Pack Total ({num_viajeros} p) (€)", 100, 2000, 650, step=25)
 
 st.sidebar.markdown("---")
 filtro_transporte = st.sidebar.multiselect(
@@ -240,12 +241,12 @@ filtro_transporte = st.sidebar.multiselect(
 # 5. RENDERIZADO PRINCIPAL
 # -----------------------------------------------------------------------------
 st.title("V A G A B O N D")
-st.caption(f"Radar de Escapadas con Tarifas Mínimas en Vivo (Travelpayouts Live v3 + Klook) desde {origen_seleccionado}")
+st.caption(f"Radar de Escapadas con Precios Validados (Travelpayouts + Klook) desde {origen_seleccionado}")
 
 tp_activa = "TRAVELPAYOUTS_KEY" in st.secrets
 
 if tp_activa:
-    st.success(f"🟢 API Travelpayouts v3 Conectada: Búsqueda sincrónica de chollos en directo para {num_viajeros} viajero(s)")
+    st.success(f"🟢 API Travelpayouts Conectada: Sincronización en directo para {num_viajeros} viajero(s)")
 
 st.write("")
 
@@ -258,14 +259,16 @@ for item in ESCAPADAS_CATALOGO:
     if not any(t in item["transporte"] for t in filtro_transporte):
         continue
 
-    # 1. Búsqueda del precio de vuelo MÁS BAJO en vivo (Sin restringir la fecha de retorno a un día fijo)
+    # 1. Búsqueda de vuelo validado contra tarifas irreales de caché
     precio_transporte_total = item["precio_transporte_persona_base"] * num_viajeros
     es_live_flight = False
     f_ida_live = None
     f_vta_live = None
 
     if "Avión" in item["transporte"] and tp_activa:
-        p_vuelo_live, f_ida_api, f_vta_api = obtener_vuelo_live_travelpayouts(codigo_origen_actual, item["code"], num_viajeros)
+        p_vuelo_live, f_ida_api, f_vta_api = obtener_vuelo_live_validado(
+            codigo_origen_actual, item["code"], num_viajeros, item["precio_transporte_persona_base"]
+        )
         if p_vuelo_live:
             precio_transporte_total = p_vuelo_live
             es_live_flight = True
@@ -322,7 +325,7 @@ if escapadas_filtradas:
             with st.container(border=True):
                 st.image(pack["imagen"], use_container_width=True)
                 
-                badge_live = " • Tarifa Mínima Live v3" if pack["es_live"] else ""
+                badge_live = " • Tarifa Live Validada" if pack["es_live"] else ""
                 st.caption(f"{pack['duracion']} • {pack['transporte']}{badge_live}")
                 st.subheader(f"{pack['destino']}, {pack['pais']}")
                 
