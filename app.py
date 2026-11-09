@@ -5,7 +5,7 @@ import httpx
 from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
-# 1. CONFIGURACIÓN DE PÁGINA Y TEMA OSCURO FIJO
+# 1. CONFIGURACIÓN DE PÁGINA Y TEMA OSCURO PERMANENTE
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="VAGABOND | Escapadas Baratas 'All-in-One'",
@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilo Oscuro Fijo Permanente
+# Estilo Oscuro Fijo Garantizado
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
@@ -43,92 +43,42 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. MOTOR DE EVALUACIÓN MULTIMODAL EN TIEMPO REAL
+# 2. MOTORES API (TRAVELPAYOUTS FLIGHTS & KLOOK CHOLLOS)
 # -----------------------------------------------------------------------------
-def obtener_vuelo_live_google(origen_code, destino_code):
+def obtener_vuelo_real_travelpayouts(origen_code, destino_code):
     """
-    Obtiene la tarifa REAL de vuelo de ida y vuelta más económica en vivo vía Google Flights (SerpApi).
+    Consulta la API oficial de Vuelos de Travelpayouts (Aviasales Engine)
+    para obtener el precio de Ida y Vuelta en tiempo real.
     """
-    serpapi_key = st.secrets.get("SERPAPI_KEY", None)
-    if not serpapi_key:
+    tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
+    if not tp_token:
         return None
-    
-    fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
-    fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
-    
+
     try:
-        url = "https://serpapi.com/search.json"
+        url = "https://api.travelpayouts.com/v1/prices/cheap"
+        headers = {"X-Access-Token": tp_token}
         params = {
-            "engine": "google_flights",
-            "departure_id": origen_code,
-            "arrival_id": destino_code,
-            "outbound_date": fecha_ida,
-            "return_date": fecha_vuelta,
-            "type": "2",  # 2 = Round trip (Ida y vuelta)
-            "travel_class": "1", # Turista
-            "currency": "EUR",
-            "hl": "es",
-            "api_key": serpapi_key
+            "origin": origen_code,
+            "destination": destino_code,
+            "currency": "EUR"
         }
-        resp = httpx.get(url, params=params, timeout=7.0)
+        resp = httpx.get(url, headers=headers, params=params, timeout=6.0)
         data = resp.json()
-        
-        precios = []
-        if "best_flights" in data:
-            precios.extend([f["price"] for f in data["best_flights"] if "price" in f])
-        if "other_flights" in data:
-            precios.extend([f["price"] for f in data["other_flights"] if "price" in f])
-            
-        if precios:
-            return min(precios)
+
+        if data.get("success") and destino_code in data.get("data", {}):
+            vuelos_destino = data["data"][destino_code]
+            # Obtener el precio más bajo entre las tarifas devueltas
+            precios = [vuelo["price"] for vuelo in vuelos_destino.values() if isinstance(vuelo, dict) and "price" in vuelo]
+            if precios:
+                return min(precios)
     except Exception:
         pass
     return None
 
-def evaluar_transporte_multimodal(origen_nombre, origen_code, destino_item):
-    """
-    Compara en tiempo real todas las opciones de transporte (Vuelo vs Autobús/Ferry/Tren)
-    y devuelve la alternativa con el menor precio absoluto.
-    """
-    opciones = []
-    
-    # Option A: Vuelo Directo en tiempo real
-    precio_vuelo = obtener_vuelo_live_google(origen_code, destino_item["code"])
-    if precio_vuelo:
-        opciones.append({
-            "tipo": "Avión (Ida y Vuelta)",
-            "precio": precio_vuelo,
-            "modo_link": "avion"
-        })
-    elif "precio_base_vuelo" in destino_item:
-        opciones.append({
-            "tipo": "Avión (Estimación Ida/Vuelta)",
-            "precio": destino_item["precio_base_vuelo"],
-            "modo_link": "avion"
-        })
-
-    # Option B: Autobús / Ferry / Tren
-    if "precio_base_terrestre" in destino_item:
-        tipo_terrestre = destino_item.get("tipo_terrestre", "Autobús / Tren")
-        opciones.append({
-            "tipo": tipo_terrestre,
-            "precio": destino_item["precio_base_terrestre"],
-            "modo_link": "terrestre"
-        })
-
-    if opciones:
-        # Devuelve la opción más barata tras comparar avión vs bus/ferry/tren
-        ganador = min(opciones, key=lambda x: x["precio"])
-        return ganador
-    
-    return {
-        "tipo": "Transporte Estándar",
-        "precio": 40,
-        "modo_link": "terrestre"
-    }
-
 def obtener_chollos_klook(destino_nombre):
-    """Escanea en vivo la actividad de menor precio en Klook."""
+    """
+    Escanea las ofertas en Klook en tiempo real y extrae la más barata.
+    """
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
         return None
@@ -156,8 +106,8 @@ def obtener_chollos_klook(destino_nombre):
         pass
     return None
 
-def generar_enlaces_escapada(modo_transporte, origen_nombre, destino_nombre):
-    """Genera hipervínculos dinámicos a las plataformas de reserva correspondientes."""
+def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, origen_code, destino_code):
+    """Genera hipervínculos dinámicos a las plataformas oficiales."""
     def simplificar(t):
         r = {'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n'}
         t = t.lower()
@@ -168,23 +118,33 @@ def generar_enlaces_escapada(modo_transporte, origen_nombre, destino_nombre):
     origen_slug = simplificar(origen_nombre)
     destino_slug = simplificar(destino_nombre)
     
-    fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
-    fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
+    fecha_ida = datetime.now() + timedelta(days=14)
+    fecha_vuelta = datetime.now() + timedelta(days=17)
 
-    # Enlace Transporte según la opción ganadora
-    if modo_transporte == "avion":
-        query_vuelo = f"Vuelos de {origen_nombre} a {destino_nombre} del {fecha_ida} al {fecha_vuelta}"
-        url_trans = f"https://www.google.com/travel/flights?q={urllib.parse.quote(query_vuelo)}"
-    else:
+    f_ida_str = fecha_ida.strftime("%Y-%m-%d")
+    f_vuelta_str = fecha_vuelta.strftime("%Y-%m-%d")
+
+    # Enlace Vuelos Aviasales / Travelpayouts o Omio
+    if "Avión" in tipo_transporte:
+        # Formato de búsqueda estándar de Aviasales: ORIGEN + DIA/MES + DESTINO + DIA/MES + Pasajeros
+        dia_ida, mes_ida = fecha_ida.strftime("%d"), fecha_ida.strftime("%m")
+        dia_vta, mes_vta = fecha_vuelta.strftime("%d"), fecha_vuelta.strftime("%m")
+        url_trans = f"https://www.aviasales.com/search/{origen_code}{dia_ida}{mes_ida}{destino_code}{dia_vta}{mes_vta}1"
+    elif "Tren" in tipo_transporte or "Autobús" in tipo_transporte:
         url_trans = f"https://www.omio.es/viajes/{origen_slug}/{destino_slug}"
+    else:
+        url_trans = f"https://www.blablacar.es/search?fn={urllib.parse.quote(origen_nombre)}&tn={urllib.parse.quote(destino_nombre)}"
 
-    url_hotel = f"https://www.klook.com/es/hotels/search/?city={urllib.parse.quote(destino_nombre)}&checkIn={fecha_ida}&checkOut={fecha_vuelta}"
+    # Enlace Alojamiento Klook
+    url_hotel = f"https://www.klook.com/es/hotels/search/?city={urllib.parse.quote(destino_nombre)}&checkIn={f_ida_str}&checkOut={f_vuelta_str}"
+
+    # Enlace Experiencia Klook
     url_actividad = f"https://www.klook.com/es/search?query={urllib.parse.quote(destino_nombre)}"
 
     return url_trans, url_hotel, url_actividad
 
 # -----------------------------------------------------------------------------
-# 3. CATÁLOGO CON EVALUACIÓN DUAL (VUELO VS. TERRESTRE/FERRY)
+# 3. CATÁLOGO DE ESCAPADAS CON TRANSPORTE ESPECÍFICO
 # -----------------------------------------------------------------------------
 ORIGENES_DISPONIBLES = {
     "Madrid": "MAD",
@@ -197,52 +157,52 @@ ORIGENES_DISPONIBLES = {
 
 ESCAPADAS_CATALOGO = [
     {
-        "destino": "Tánger / Fez", "pais": "Marruecos", "code": "TNG",
-        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 22, 
-        "precio_base_vuelo": 38, "precio_base_terrestre": 29, "tipo_terrestre": "Autobús + Ferry",
-        "actividad_defecto": "Visita Guiada Medina y Zoco", "precio_actividad_defecto": 12,
-        "imagen": "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-        "destino": "Oporto", "pais": "Portugal", "code": "OPO",
-        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 28, 
-        "precio_base_vuelo": 45, "precio_base_terrestre": 24, "tipo_terrestre": "Autobús Nocturno / Tren",
-        "actividad_defecto": "Crucero de los 6 Puentes por el Duero", "precio_actividad_defecto": 15,
-        "imagen": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-        "destino": "Valencia", "pais": "España", "code": "VLC",
-        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 35, 
-        "precio_base_vuelo": 55, "precio_base_terrestre": 19, "tipo_terrestre": "Tren Alta Velocidad (Ouigo/Iryo)",
-        "actividad_defecto": "Ciudad de las Artes y Ciencias", "precio_actividad_defecto": 24,
-        "imagen": "https://images.unsplash.com/photo-1590496793929-36417d3117de?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-        "destino": "Sofía", "pais": "Bulgaria", "code": "SOF",
-        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 24, 
-        "precio_base_vuelo": 39, "precio_base_terrestre": 85, "tipo_terrestre": "Autobús Larga Distancia",
-        "actividad_defecto": "Tour a los Monasterios de Rila", "precio_actividad_defecto": 15,
+        "destino": "Sofía", "pais": "Bulgaria", "transporte": "Avión Directo", "code": "SOF",
+        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 25, 
+        "actividad_defecto": "Tour a los Monasterios de Rila", "precio_actividad_defecto": 15, 
+        "precio_transporte_base": 39,
         "imagen": "https://images.unsplash.com/photo-1573843981267-be1999ff37cd?auto=format&fit=crop&w=800&q=80"
     },
     {
-        "destino": "Palma de Mallorca", "pais": "España", "code": "PMI",
-        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 35, 
-        "precio_base_vuelo": 28, "precio_base_terrestre": 45, "tipo_terrestre": "Ferry Express",
-        "actividad_defecto": "Paseo en Barco y Snorkel", "precio_actividad_defecto": 25,
-        "imagen": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80"
+        "destino": "Oporto", "pais": "Portugal", "transporte": "Autobús Nocturno", "code": "OPO",
+        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 28, 
+        "actividad_defecto": "Crucero de los 6 Puentes por el Duero", "precio_actividad_defecto": 15, 
+        "precio_transporte_base": 24,
+        "imagen": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=800&q=80"
     },
     {
-        "destino": "Roma", "pais": "Italia", "code": "FCO",
+        "destino": "Fez", "pais": "Marruecos", "transporte": "Avión Directo", "code": "FEZ",
+        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 22, 
+        "actividad_defecto": "Visita Guiada por la Medina Histórica", "precio_actividad_defecto": 12, 
+        "precio_transporte_base": 28,
+        "imagen": "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "destino": "Varsovia", "pais": "Polonia", "transporte": "Avión Directo", "code": "WAW",
+        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 30, 
+        "actividad_defecto": "Concierto de Chopin en el Casco Antiguo", "precio_actividad_defecto": 14, 
+        "precio_transporte_base": 45,
+        "imagen": "https://images.unsplash.com/photo-1519197924294-4ac978a3ef54?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "destino": "Valencia", "pais": "España", "transporte": "Tren Alta Velocidad", "code": "VLC",
+        "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 35, 
+        "actividad_defecto": "Ciudad de las Artes y Ciencias", "precio_actividad_defecto": 24, 
+        "precio_transporte_base": 19,
+        "imagen": "https://images.unsplash.com/photo-1590496793929-36417d3117de?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "destino": "Roma", "pais": "Italia", "transporte": "Avión Directo", "code": "FCO",
         "duracion": "3 Días / 2 Noches", "hotel_estimado_noche": 42, 
-        "precio_base_vuelo": 48, "precio_base_terrestre": 110, "tipo_terrestre": "Autobús / Tren",
-        "actividad_defecto": "Visita Guiada Coliseo y Foro Romano", "precio_actividad_defecto": 30,
+        "actividad_defecto": "Visita Guiada Coliseo y Foro Romano", "precio_actividad_defecto": 30, 
+        "precio_transporte_base": 48,
         "imagen": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80"
     },
     {
-        "destino": "París", "pais": "Francia", "code": "PAR",
+        "destino": "París", "pais": "Francia", "transporte": "Autobús Larga Distancia", "code": "PAR",
         "duracion": "4 Días / 3 Noches", "hotel_estimado_noche": 48, 
-        "precio_base_vuelo": 65, "precio_base_terrestre": 39, "tipo_terrestre": "Autobús Larga Distancia (FlixBus)",
-        "actividad_defecto": "Crucero por el Sena al Atardecer", "precio_actividad_defecto": 16,
+        "actividad_defecto": "Crucero por el Sena al Atardecer", "precio_actividad_defecto": 16, 
+        "precio_transporte_base": 39,
         "imagen": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80"
     }
 ]
@@ -257,17 +217,23 @@ codigo_origen_actual = ORIGENES_DISPONIBLES[origen_seleccionado]
 st.sidebar.markdown("---")
 presupuesto_total_pack = st.sidebar.slider("Presupuesto MÁXIMO Pack (€)", 50, 600, 220, step=10)
 
+st.sidebar.markdown("---")
+filtro_transporte = st.sidebar.multiselect(
+    "Modos de Transporte:",
+    ["Avión", "Tren", "Autobús"],
+    default=["Avión", "Tren", "Autobús"]
+)
+
 # -----------------------------------------------------------------------------
-# 5. RENDERIZADO
+# 5. RENDERIZADO PRINCIPAL (EXCLUSIVO TRAVELPAYOUTS LIVE API)
 # -----------------------------------------------------------------------------
 st.title("V A G A B O N D")
-st.caption(f"Comparador Multimodal en Tiempo Real (Vuelo vs. Bus/Ferry + Hotel + Chollo Klook) desde {origen_seleccionado}")
+st.caption(f"Radar de Escapadas Baratas con Tarifas en Vivo (Travelpayouts API + Klook + Hotel) desde {origen_seleccionado}")
 
-serp_activa = "SERPAPI_KEY" in st.secrets
-klook_activa = "TRAVELPAYOUTS_KEY" in st.secrets
+tp_activa = "TRAVELPAYOUTS_KEY" in st.secrets
 
-if serp_activa:
-    st.success("🟢 Peticiones Google Flights (Ida/Vuelta en Vivo) + Klook API activas")
+if tp_activa:
+    st.success("🟢 API Travelpayouts Conectada: Extrayendo vuelos e historias Klook en directo")
 
 st.write("")
 
@@ -276,16 +242,24 @@ escapadas_filtradas = []
 for item in ESCAPADAS_CATALOGO:
     if item["destino"].lower() == origen_seleccionado.lower():
         continue
+        
+    if not any(t in item["transporte"] for t in filtro_transporte):
+        continue
 
-    # 1. Comparación Multimodal en Tiempo Real (Selecciona lo más barato entre Avión y Bus/Ferry)
-    transporte_ganador = evaluar_transporte_multimodal(origen_seleccionado, codigo_origen_actual, item)
-    precio_transporte = transporte_ganador["precio"]
-    tipo_transporte_nombre = transporte_ganador["tipo"]
+    # 1. Consulta Tarifas de Vuelos Real desde Travelpayouts (Aviasales API)
+    precio_transporte = item["precio_transporte_base"]
+    es_live_flight = False
 
-    # 2. Chollo Klook
+    if "Avión" in item["transporte"] and tp_activa:
+        precio_vuelo_tp = obtener_vuelo_real_travelpayouts(codigo_origen_actual, item["code"])
+        if precio_vuelo_tp:
+            precio_transporte = precio_vuelo_tp
+            es_live_flight = True
+
+    # 2. Chollo Klook en vivo
     nombre_actividad = item["actividad_defecto"]
     precio_actividad = item["precio_actividad_defecto"]
-    if klook_activa:
+    if tp_activa:
         datos_klook = obtener_chollos_klook(item["destino"])
         if datos_klook:
             nombre_actividad = datos_klook["actividad"]
@@ -299,29 +273,30 @@ for item in ESCAPADAS_CATALOGO:
 
     if precio_total_pack <= presupuesto_total_pack:
         url_trans, url_hotel, url_act = generar_enlaces_escapada(
-            transporte_ganador["modo_link"], origen_seleccionado, item["destino"]
+            item["transporte"], origen_seleccionado, item["destino"], codigo_origen_actual, item["code"]
         )
 
         escapadas_filtradas.append({
             "destino": item["destino"],
             "pais": item["pais"],
             "duracion": item["duracion"],
-            "transporte": tipo_transporte_nombre,
+            "transporte": item["transporte"],
             "imagen": item["imagen"],
             "precio_transporte": int(precio_transporte),
             "precio_alojamiento": int(precio_alojamiento_total),
             "actividad_nombre": nombre_actividad,
             "precio_actividad": int(precio_actividad),
             "precio_total": precio_total_pack,
+            "es_live": es_live_flight,
             "url_transporte": url_trans,
             "url_hotel": url_hotel,
             "url_actividad": url_act
         })
 
-# Ordenar por precio total de menor a mayor
+# Ordenar las escapadas de menor a mayor precio total
 escapadas_filtradas = sorted(escapadas_filtradas, key=lambda x: x["precio_total"])
 
-# Renderizado mediante tarjetas nativas
+# Renderizado usando tarjetas nativas fijas
 if escapadas_filtradas:
     cols = st.columns(2)
     for idx, pack in enumerate(escapadas_filtradas):
@@ -330,7 +305,8 @@ if escapadas_filtradas:
             with st.container(border=True):
                 st.image(pack["imagen"], use_container_width=True)
                 
-                st.caption(f"{pack['duracion']} • Opcion más barata: {pack['transporte']}")
+                badge_live = " • Live API" if pack["es_live"] else ""
+                st.caption(f"{pack['duracion']} • {pack['transporte']}{badge_live}")
                 st.subheader(f"{pack['destino']}, {pack['pais']}")
                 
                 st.metric(label="Precio Pack Completo Estimado", value=f"{pack['precio_total']} €")
@@ -339,7 +315,7 @@ if escapadas_filtradas:
                 
                 st.write(f"• **Transporte ({pack['transporte']}):** {pack['precio_transporte']} €")
                 st.write(f"• **Alojamiento (2 Noches):** {pack['precio_alojamiento']} €")
-                st.write(f"• **Chollo Klook:** {pack['actividad_nombre']} ({pack['precio_actividad']} €)")
+                st.write(f"• **Experiencia Klook:** {pack['actividad_nombre']} ({pack['precio_actividad']} €)")
                 
                 st.divider()
 
@@ -360,4 +336,4 @@ if escapadas_filtradas:
                     use_container_width=True
                 )
 else:
-    st.info(f"No hay paquetes disponibles desde {origen_seleccionado} por debajo de {presupuesto_total_pack}€. Eleva el presupuesto en el panel lateral.")
+    st.info(f"No hay paquetes disponibles desde {origen_seleccionado} por debajo de {presupuesto_total_pack}€. Incrementa el presupuesto en el panel lateral.")
