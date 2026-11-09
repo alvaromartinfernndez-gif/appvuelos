@@ -2,11 +2,10 @@ import streamlit as st
 import pandas as pd
 import urllib.parse
 import httpx
-import time
 from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
-# 1. CONFIGURACIÓN DE PÁGINA Y TEMA OSCURO FIJO
+# 1. CONFIGURACIÓN DE PÁGINA Y MODO OSCURO PERMANENTE
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="VAGABOND | Escapadas Baratas 'All-in-One'",
@@ -43,7 +42,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. MOTORES EN TIEMPO REAL (TRAVELPAYOUTS V3 FLIGHTS & KLOOK CON DEEP LINKS ROBUSTOS)
+# 2. MOTORES EN TIEMPO REAL (TRAVELPAYOUTS V3 FLIGHTS & KLOOK EN DIRECTO)
 # -----------------------------------------------------------------------------
 def obtener_vuelo_live_travelpayouts(origen_code, destino_code, num_pasajeros):
     """
@@ -81,8 +80,7 @@ def obtener_vuelo_live_travelpayouts(origen_code, destino_code, num_pasajeros):
 
 def obtener_chollos_klook_live(destino_nombre, num_pasajeros):
     """
-    Consulta la API de Klook para extraer la experiencia más económica 
-    junto con su enlace de reserva oficial directo de la respuesta JSON.
+    Consulta la API de Klook para extraer la experiencia más económica.
     """
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
@@ -105,8 +103,7 @@ def obtener_chollos_klook_live(destino_nombre, num_pasajeros):
                 item_chollo = min(items_validos, key=lambda x: float(x["price"]))
                 precio_unitario = float(item_chollo.get("price"))
                 
-                # Extraer la URL devuelta directamente por la API de Klook
-                url_directa = item_chollo.get("deep_link") or item_chollo.get("url") or item_chollo.get("link")
+                url_directa = item_chollo.get("deep_link") or item_chollo.get("url")
                 
                 return {
                     "actividad": item_chollo.get("title", f"Experiencia Top en {destino_nombre}"),
@@ -118,7 +115,7 @@ def obtener_chollos_klook_live(destino_nombre, num_pasajeros):
     return None
 
 def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, origen_code, destino_code, num_pasajeros, url_klook_actividad_api=None):
-    """Genera URLs dinámicas de reserva 100% funcionales y sin errores 404."""
+    """Genera URLs dinámicas directas sin riesgo de fallo 404."""
     def simplificar(t):
         r = {'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n'}
         t = t.lower()
@@ -142,16 +139,14 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, ori
     else:
         url_trans = f"https://www.blablacar.es/search?fn={urllib.parse.quote(origen_nombre)}&tn={urllib.parse.quote(destino_nombre)}"
 
-    # 2. Enlace Alojamiento Klook (Motor global estandarizado sin 404)
-    query_hotel = urllib.parse.quote(f"hotel {destino_nombre}")
-    url_hotel = f"https://www.klook.com/es-ES/search?query={query_hotel}"
+    # 2. Enlace Alojamiento Klook (Estructura de búsqueda segura garantizada)
+    url_hotel = f"https://www.klook.com/es/search/?query={urllib.parse.quote('hotel ' + destino_nombre)}"
 
-    # 3. Enlace Experiencia Klook (Usa URL de la API o Búsqueda Global Segura)
-    if url_klook_actividad_api and url_klook_actividad_api.startswith("http"):
+    # 3. Enlace Experiencia Klook (Prioriza la URL directa devuelta por la API)
+    if url_klook_actividad_api and str(url_klook_actividad_api).startswith("http"):
         url_actividad = url_klook_actividad_api
     else:
-        query_actividad = urllib.parse.quote(f"actividades {destino_nombre}")
-        url_actividad = f"https://www.klook.com/es-ES/search?query={query_actividad}"
+        url_actividad = f"https://www.klook.com/es/search/?query={urllib.parse.quote('actividades ' + destino_nombre)}"
 
     return url_trans, url_hotel, url_actividad
 
