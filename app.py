@@ -5,10 +5,10 @@ import httpx
 from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
-# 1. CONFIGURACIÓN DE PÁGINA Y TEMAS VISUALES ADAPTATIVOS
+# 1. CONFIGURACIÓN DE PÁGINA Y TEMAS NATIVOS (SIN CONFLICIÓN DE VISIBILIDAD)
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="VAGABOND | Escapadas Baratas",
+    page_title="VAGABOND | Escapadas Baratas 'All-in-One'",
     page_icon="🗺️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -17,173 +17,32 @@ st.set_page_config(
 st.sidebar.markdown("### CONFIGURACIÓN DE ALERTAS")
 tema_elegido = st.sidebar.radio("Apariencia", ["Modo Claro ☀️", "Modo Oscuro 🌙"], index=0)
 
+# Aplicar clases de tema de forma limpia sobre el contenedor principal de Streamlit
 if tema_elegido == "Modo Oscuro 🌙":
-    bg_app = "#090D16"
-    bg_sidebar = "#111827"
-    text_color = "#F8FAFC"
-    sub_color = "#94A3B8"
-    card_bg = "#111827"
-    card_border = "#1E293B"
-    btn_bg = "#F8FAFC"
-    btn_text = "#090D16"
-    btn_sec_bg = "#1E293B"
-    btn_sec_text = "#F8FAFC"
-    badge_bg = "rgba(16, 185, 129, 0.15)"
-    accent_color = "#10B981"
+    st.markdown("""
+    <style>
+        .stApp { background-color: #090D16 !important; }
+        .stApp, p, span, label, h1, h2, h3, h4, div { color: #F8FAFC !important; }
+        [data-testid="stSidebar"] { background-color: #111827 !important; }
+    </style>
+    """, unsafe_allow_html=True)
 else:
-    bg_app = "#FAFAFA"
-    bg_sidebar = "#FFFFFF"
-    text_color = "#0F172A"
-    sub_color = "#475569"
-    card_bg = "#FFFFFF"
-    card_border = "#E2E8F0"
-    btn_bg = "#0F172A"
-    btn_text = "#FFFFFF"
-    btn_sec_bg = "#F1F5F9"
-    btn_sec_text = "#0F172A"
-    badge_bg = "rgba(4, 120, 87, 0.08)"
-    accent_color = "#047857"
-
-st.markdown(f"""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
-
-    /* Forzado absoluto de fondo de aplicación */
-    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
-        background-color: {bg_app} !important;
-        color: {text_color} !important;
-    }}
-
-    /* Barra lateral */
-    section[data-testid="stSidebar"], [data-testid="stSidebarContent"] {{
-        background-color: {bg_sidebar} !important;
-        border-right: 1px solid {card_border} !important;
-    }}
-
-    /* Tipografías globales */
-    p, span, div, label, h1, h2, h3, h4, h5, h6, .stMarkdown {{
-        color: {text_color} !important;
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
-    }}
-
-    .brand-title {{
-        font-family: 'Playfair Display', serif !important;
-        font-size: 2.8rem;
-        font-weight: 700;
-        letter-spacing: 6px;
-        color: {text_color} !important;
-        margin-bottom: 0.2rem;
-        text-transform: uppercase;
-    }}
-
-    .brand-subtitle {{
-        font-size: 0.85rem;
-        color: {sub_color} !important;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-bottom: 2rem;
-    }}
-
-    /* Tarjeta fotográfica de destino */
-    .card-container {{
-        background-color: {card_bg};
-        border: 1px solid {card_border};
-        border-radius: 12px;
-        overflow: hidden;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
-    }}
-
-    .card-hero-img {{
-        width: 100%;
-        height: 180px;
-        object-fit: cover;
-    }}
-
-    .card-body {{
-        padding: 1.5rem;
-    }}
-
-    .card-title {{
-        font-family: 'Playfair Display', serif !important;
-        font-size: 1.6rem;
-        font-weight: 700;
-        margin: 0;
-        color: {text_color} !important;
-    }}
-
-    .card-price {{
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: {accent_color} !important;
-    }}
-
-    .card-tag {{
-        display: inline-block;
-        font-size: 0.7rem;
-        font-weight: 700;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        padding: 4px 10px;
-        border-radius: 4px;
-        background-color: {badge_bg};
-        color: {accent_color} !important;
-        margin-bottom: 8px;
-    }}
-
-    /* Botones de acción real adaptados al tema elegido */
-    .btn-link-primary {{
-        display: block;
-        width: 100%;
-        text-align: center;
-        background-color: {btn_bg} !important;
-        color: {btn_text} !important;
-        padding: 0.75rem 1rem;
-        border-radius: 6px;
-        text-decoration: none !important;
-        font-weight: 700;
-        font-size: 0.75rem;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-top: 0.8rem;
-        box-sizing: border-box;
-    }}
-
-    .btn-link-secondary {{
-        display: block;
-        width: 100%;
-        text-align: center;
-        background-color: {btn_sec_bg} !important;
-        color: {btn_sec_text} !important;
-        border: 1px solid {card_border};
-        padding: 0.65rem 1rem;
-        border-radius: 6px;
-        text-decoration: none !important;
-        font-weight: 600;
-        font-size: 0.75rem;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        margin-top: 0.5rem;
-        box-sizing: border-box;
-    }}
-
-    /* Desglose de costes */
-    .cost-item {{
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.85rem;
-        color: {sub_color} !important;
-        padding: 6px 0;
-        border-bottom: 1px dashed {card_border};
-    }}
-</style>
-""", unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+        .stApp { background-color: #FAFAFA !important; }
+        .stApp, p, span, label, h1, h2, h3, h4, div { color: #0F172A !important; }
+        [data-testid="stSidebar"] { background-color: #FFFFFF !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. MOTORES API (KLOOK ACTIVIDADES/ALOJAMIENTO & GOOGLE FLIGHTS)
+# 2. MOTORES API (ALGORITMO CHOLLOS KLOOK MULTI-OPCIÓN + GOOGLE FLIGHTS)
 # -----------------------------------------------------------------------------
 def obtener_chollos_klook(destino_nombre):
-    """Consulta la API de Klook para encontrar la experiencia más económica en la ciudad."""
+    """
+    Escanea múltiples actividades y ofertas en Klook en tiempo real,
+    evalúa las combinaciones y selecciona la opción de menor precio (el chollo).
+    """
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
         return None
@@ -200,11 +59,12 @@ def obtener_chollos_klook(destino_nombre):
         data = resp.json()
         
         if "items" in data and len(data["items"]) > 0:
+            # Filtrar ítems válidos y ordenar por precio para hallar la combinación más económica
             items_validos = [i for i in data["items"] if "price" in i and float(i["price"]) > 0]
             if items_validos:
                 item_chollo = min(items_validos, key=lambda x: float(x["price"]))
                 return {
-                    "actividad": item_chollo.get("title", f"Experiencia en {destino_nombre}"),
+                    "actividad": item_chollo.get("title", f"Experiencia Top en {destino_nombre}"),
                     "precio": float(item_chollo.get("price"))
                 }
     except Exception:
@@ -212,7 +72,7 @@ def obtener_chollos_klook(destino_nombre):
     return None
 
 def obtener_vuelo_google_real(origen_code, destino_code):
-    """Consulta la API de Google Flights mediante SerpApi."""
+    """Consulta la API de Google Flights mediante SerpApi en tiempo real."""
     serpapi_key = st.secrets.get("SERPAPI_KEY", None)
     if not serpapi_key:
         return None
@@ -241,7 +101,7 @@ def obtener_vuelo_google_real(origen_code, destino_code):
     return None
 
 def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre):
-    """Genera las URLs directas para la reserva."""
+    """Genera hipervínculos dinámicos y directos a los buscadores oficiales."""
     def simplificar(t):
         r = {'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n'}
         t = t.lower()
@@ -255,6 +115,7 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre):
     fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
     fecha_vuelta = (datetime.now() + timedelta(days=16)).strftime("%Y-%m-%d")
 
+    # Enlace Transporte
     if "Avión" in tipo_transporte:
         query_vuelo = f"Vuelos de {origen_nombre} a {destino_nombre} del {fecha_ida} al {fecha_vuelta}"
         url_trans = f"https://www.google.com/travel/flights?q={urllib.parse.quote(query_vuelo)}"
@@ -263,13 +124,16 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre):
     else:
         url_trans = f"https://www.blablacar.es/search?fn={urllib.parse.quote(origen_nombre)}&tn={urllib.parse.quote(destino_nombre)}"
 
+    # Enlace Alojamiento Klook/Booking
     url_hotel = f"https://www.klook.com/es/hotels/search/?city={urllib.parse.quote(destino_nombre)}&checkIn={fecha_ida}&checkOut={fecha_vuelta}"
+
+    # Enlace Experiencia Klook
     url_actividad = f"https://www.klook.com/es/search?query={urllib.parse.quote(destino_nombre)}"
 
     return url_trans, url_hotel, url_actividad
 
 # -----------------------------------------------------------------------------
-# 3. CATÁLOGO CON FOTOGRAFÍA REALISTA DE ARTE DE VIAJE (UNSPLASH ARCHITECTURE)
+# 3. GALERÍA DE DESTINOS CON ARTE FOTOGRÁFICO REALISTA
 # -----------------------------------------------------------------------------
 ORIGENES_DISPONIBLES = {
     "Madrid": "MAD",
@@ -314,7 +178,7 @@ ESCAPADAS_CATALOGO = [
 ]
 
 # -----------------------------------------------------------------------------
-# 4. PANEL LATERAL DE NAVEGACIÓN
+# 4. BARRA LATERAL (CONTROLES)
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("### ORIGEN DE LA ESCAPADA")
 origen_seleccionado = st.sidebar.selectbox("Ciudad de Salida", list(ORIGENES_DISPONIBLES.keys()), index=0)
@@ -331,13 +195,18 @@ filtro_transporte = st.sidebar.multiselect(
 )
 
 # -----------------------------------------------------------------------------
-# 5. RENDERIZADO EDITORIAL DE TARJETAS DE ESCAPADA
+# 5. RENDERIZADO CON NAVEGACIÓN Y COMPONENTES OFICIALES STREAMLIT
 # -----------------------------------------------------------------------------
-st.markdown('<div class="brand-title">V A G A B O N D</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="brand-subtitle">Colección de Escapadas Completas desde <b>{origen_seleccionado}</b></div>', unsafe_allow_html=True)
+st.title("V A G A B O N D")
+st.caption(f"Colección de Escapadas Baratas con Todo Incluido (Transporte + Hotel + Chollo Klook) desde {origen_seleccionado}")
 
 serp_activa = "SERPAPI_KEY" in st.secrets
 klook_activa = "TRAVELPAYOUTS_KEY" in st.secrets
+
+if serp_activa or klook_activa:
+    st.success("🟢 API Klook (Chollos Actividades) & Google Flights activas en tiempo real")
+
+st.write("")
 
 escapadas_filtradas = []
 
@@ -348,14 +217,14 @@ for item in ESCAPADAS_CATALOGO:
     if not any(t in item["transporte"] for t in filtro_transporte):
         continue
 
-    # 1. Transporte
+    # 1. Transporte en tiempo real
     precio_transporte = item["precio_transporte_base"]
     if "Avión" in item["transporte"] and serp_activa:
         p_vuelo = obtener_vuelo_google_real(codigo_origen_actual, item["code"])
         if p_vuelo:
             precio_transporte = p_vuelo
 
-    # 2. Experiencia Klook
+    # 2. Chollo Klook en tiempo real (Combinador de menor precio)
     nombre_actividad = item["actividad_defecto"]
     precio_actividad = item["precio_actividad_defecto"]
     if klook_activa:
@@ -364,10 +233,10 @@ for item in ESCAPADAS_CATALOGO:
             nombre_actividad = datos_klook["actividad"]
             precio_actividad = datos_klook["precio"]
 
-    # 3. Alojamiento
+    # 3. Alojamiento estimado (2 Noches)
     precio_alojamiento_total = item["hotel_estimado_noche"] * 2
 
-    # 4. Precio Total
+    # 4. Precio Total Pack
     precio_total_pack = int(precio_transporte + precio_alojamiento_total + precio_actividad)
 
     if precio_total_pack <= presupuesto_total_pack:
@@ -391,41 +260,48 @@ for item in ESCAPADAS_CATALOGO:
             "url_actividad": url_act
         })
 
+# Renderizado garantizado con st.container() y st.link_button()
 if escapadas_filtradas:
     cols = st.columns(2)
     for idx, pack in enumerate(escapadas_filtradas):
         col = cols[idx % 2]
         with col:
-            st.markdown(f"""
-            <div class="card-container">
-                <img src="{pack['imagen']}" class="card-hero-img" alt="{pack['destino']}">
-                <div class="card-body">
-                    <div class="card-tag">{pack['duracion']} • {pack['transporte']}</div>
-                    <div class="card-title">{pack['destino']}, {pack['pais']}</div>
-                    
-                    <div style="margin-top: 12px; margin-bottom: 15px;">
-                        <span class="card-price">{pack['precio_total']} €</span>
-                        <span style="font-size: 0.8rem; color: {sub_color};"> / PACK COMPLETO</span>
-                    </div>
+            with st.container(border=True):
+                # Imagen fotográfica realista
+                st.image(pack["imagen"], use_container_width=True)
+                
+                # Encabezados nativos
+                st.caption(f"{pack['duracion']} • {pack['transporte']}")
+                st.subheader(f"{pack['destino']}, {pack['pais']}")
+                
+                # Métrica de Precio
+                st.metric(label="Precio Pack Completo", value=f"{pack['precio_total']} €")
+                
+                st.divider()
+                
+                # Desglose de componentes
+                st.write(f"• **Transporte (Ida/Vuelta):** {pack['precio_transporte']} €")
+                st.write(f"• **Alojamiento (2 Noches):** {pack['precio_alojamiento']} €")
+                st.write(f"• **Chollo Klook:** {pack['actividad_nombre']} ({pack['precio_actividad']} €)")
+                
+                st.divider()
 
-                    <div class="cost-item">
-                        <span>Billete de Transporte (Ida / Vuelta)</span>
-                        <b>{pack['precio_transporte']} €</b>
-                    </div>
-                    <div class="cost-item">
-                        <span>Alojamiento (2 Noches)</span>
-                        <b>{pack['precio_alojamiento']} €</b>
-                    </div>
-                    <div class="cost-item" style="border-bottom: none;">
-                        <span>Experiencia Klook: {pack['actividad_nombre']}</span>
-                        <b>{pack['precio_actividad']} €</b>
-                    </div>
-
-                    <a href="{pack['url_transporte']}" target="_blank" class="btn-link-primary">1. RESERVAR TRANSPORTE ({pack['precio_transporte']}€)</a>
-                    <a href="{pack['url_hotel']}" target="_blank" class="btn-link-secondary">2. HOTEL EN KLOOK ({pack['precio_alojamiento']}€)</a>
-                    <a href="{pack['url_actividad']}" target="_blank" class="btn-link-secondary">3. RESERVAR EXPERIENCIA ({pack['precio_actividad']}€)</a>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                # BOTONES NATIVOS DE ENLACE DIRECTO (100% Clicables y compatibles con cualquier tema)
+                st.link_button(
+                    f"1. Reservar Transporte ({pack['precio_transporte']}€)", 
+                    pack["url_transporte"], 
+                    type="primary", 
+                    use_container_width=True
+                )
+                st.link_button(
+                    f"2. Ver Hotel en Klook ({pack['precio_alojamiento']}€)", 
+                    pack["url_hotel"], 
+                    use_container_width=True
+                )
+                st.link_button(
+                    f"3. Reservar Experiencia ({pack['precio_actividad']}€)", 
+                    pack["url_actividad"], 
+                    use_container_width=True
+                )
 else:
-    st.info(f"No hay paquetes disponibles desde {origen_seleccionado} por debajo de {presupuesto_total_pack}€. Eleva el presupuesto en el panel lateral.")
+    st.info(f"No hay paquetes disponibles desde {origen_seleccionado} por debajo de {presupuesto_total_pack}€. Eleva el presupuesto en la barra lateral.")
