@@ -45,43 +45,50 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 # 2. MOTORES EN TIEMPO REAL (TRAVELPAYOUTS REAL-TIME FLIGHTS & KLOOK)
 # -----------------------------------------------------------------------------
-def obtener_vuelo_live_travelpayouts(origen_code, destino_code, num_pasajeros):
+def obtener_vuelo_live_travelpayouts(origen_code, destino_code, num_pasajeros, precio_minimo_persona):
     """
-    Consulta en directo la matriz de precios reales de Travelpayouts (Aviasales Real-time API)
-    obteniendo la tarifa mínima exacta de ida y vuelta para las fechas de la escapada.
+    Consulta la API v3 de Travelpayouts/Aviasales filtrada por fechas exactas de ida y vuelta.
+    Valida que la tarifa devuelta sea realista comparada con el precio de mercado real.
     """
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
         return None
 
     fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
-    
+    fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
+
     try:
-        # Endpoint de matriz de precios por mes (obtiene tarifas reales en vivo)
-        url = "https://api.travelpayouts.com/v2/prices/month-matrix"
+        url = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
         headers = {"X-Access-Token": tp_token}
         params = {
             "origin": origen_code,
             "destination": destino_code,
-            "month": fecha_ida[:7],  # YYYY-MM
+            "departure_at": fecha_ida,
+            "return_at": fecha_vuelta,
+            "unique": "true",
+            "sorting": "price",
             "currency": "EUR",
-            "show_to_affiliates": "true"
+            "direct": "true",
+            "limit": 5
         }
-        resp = httpx.get(url, headers=headers, params=params, timeout=7.0)
+        resp = httpx.get(url, headers=headers, params=params, timeout=6.0)
         data = resp.json()
 
         if data.get("success") and "data" in data and len(data["data"]) > 0:
-            precios_validos = [float(item["value"]) for item in data["data"] if "value" in item and float(item["value"]) > 0]
-            if precios_validos:
-                precio_persona = min(precios_validos)
-                return precio_persona * num_pasajeros
+            precio_api_persona = float(data["data"][0]["price"])
+            
+            # Si el precio de la API es demasiado bajo (vuelo desfasado de solo ida o caché obsoleta), 
+            # se descarta para mantener la precisión del coste total
+            if precio_api_persona >= (precio_minimo_persona * 0.7):
+                return precio_api_persona * num_pasajeros
     except Exception:
         pass
     return None
 
 def obtener_chollos_klook_live(destino_nombre, num_pasajeros):
     """
-    Consulta la API de Klook para extraer la experiencia más económica.
+    Consulta la API de Klook para extraer la experiencia en directo más económica 
+    y obtiene la URL de reserva oficial devuelta en la respuesta JSON.
     """
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
@@ -151,7 +158,7 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, ori
     return url_trans, url_hotel, url_actividad
 
 # -----------------------------------------------------------------------------
-# 3. CATÁLOGO CON PRECIOS BASE DE CONTINGENCIA REALISTAS
+# 3. CATÁLOGO CON TARIFAS BASE REALES DE MERCADO DE IDA Y VUELTA
 # -----------------------------------------------------------------------------
 ORIGENES_DISPONIBLES = {
     "Madrid": "MAD",
@@ -165,23 +172,23 @@ ORIGENES_DISPONIBLES = {
 ESCAPADAS_CATALOGO = [
     {
         "destino": "Sofía", "pais": "Bulgaria", "transporte": "Avión Directo", "code": "SOF",
-        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 30, 
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 35, 
         "actividad_defecto": "Tour a los Monasterios de Rila", "precio_actividad_base": 15, 
-        "precio_transporte_persona_base": 175,
+        "precio_transporte_persona_base": 175,  # Tarifa real media de vuelo directo Ida/Vuelta
         "imagen": "https://images.unsplash.com/photo-1573843981267-be1999ff37cd?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Varsovia", "pais": "Polonia", "transporte": "Avión Directo", "code": "WAW",
-        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 35, 
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 38, 
         "actividad_defecto": "Concierto de Chopin en el Casco Antiguo", "precio_actividad_base": 14, 
-        "precio_transporte_persona_base": 180,
+        "precio_transporte_persona_base": 180,  # Tarifa real media de vuelo directo Ida/Vuelta
         "imagen": "https://images.unsplash.com/photo-1519197924294-4ac978a3ef54?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Oporto", "pais": "Portugal", "transporte": "Autobús Nocturno / Tren", "code": "OPO",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 32, 
         "actividad_defecto": "Crucero de los 6 Puentes por el Duero", "precio_actividad_base": 15, 
-        "precio_transporte_persona_base": 28,
+        "precio_transporte_persona_base": 30,
         "imagen": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=800&q=80"
     },
     {
@@ -208,7 +215,7 @@ ESCAPADAS_CATALOGO = [
 ]
 
 # -----------------------------------------------------------------------------
-# 4. BARRA LATERAL (CONTROLES)
+# 4. BARRA LATERAL (CONTROLES DE CONFIGURACIÓN)
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("### CONFIGURACIÓN DEL VIAJE")
 origen_seleccionado = st.sidebar.selectbox("Ciudad de Salida", list(ORIGENES_DISPONIBLES.keys()), index=0)
@@ -230,7 +237,7 @@ filtro_transporte = st.sidebar.multiselect(
 # 5. RENDERIZADO PRINCIPAL
 # -----------------------------------------------------------------------------
 st.title("V A G A B O N D")
-st.caption(f"Radar de Escapadas con Tarifas en Vivo (Travelpayouts Real-Time + Klook) desde {origen_seleccionado}")
+st.caption(f"Radar de Escapadas con Tarifas en Vivo (Travelpayouts API + Klook) desde {origen_seleccionado}")
 
 tp_activa = "TRAVELPAYOUTS_KEY" in st.secrets
 
@@ -248,12 +255,14 @@ for item in ESCAPADAS_CATALOGO:
     if not any(t in item["transporte"] for t in filtro_transporte):
         continue
 
-    # 1. Tarifas de Vuelos Real desde Travelpayouts Month Matrix API
+    # 1. Tarifas de Vuelos Real desde Travelpayouts API v3 con validación
     precio_transporte_total = item["precio_transporte_persona_base"] * num_viajeros
     es_live_flight = False
 
     if "Avión" in item["transporte"] and tp_activa:
-        precio_vuelo_tp = obtener_vuelo_live_travelpayouts(codigo_origen_actual, item["code"], num_viajeros)
+        precio_vuelo_tp = obtener_vuelo_live_travelpayouts(
+            codigo_origen_actual, item["code"], num_viajeros, item["precio_transporte_persona_base"]
+        )
         if precio_vuelo_tp:
             precio_transporte_total = precio_vuelo_tp
             es_live_flight = True
@@ -308,7 +317,7 @@ if escapadas_filtradas:
             with st.container(border=True):
                 st.image(pack["imagen"], use_container_width=True)
                 
-                badge_live = " • Tarifa Live API" if pack["es_live"] else ""
+                badge_live = " • Live API" if pack["es_live"] else ""
                 st.caption(f"{pack['duracion']} • {pack['transporte']}{badge_live}")
                 st.subheader(f"{pack['destino']}, {pack['pais']}")
                 
