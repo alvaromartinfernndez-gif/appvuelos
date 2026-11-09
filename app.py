@@ -5,7 +5,7 @@ import httpx
 from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
-# 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS
+# 1. CONFIGURACIÓN DE PÁGINA Y TEMA DINÁMICO BLINDADO
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="VAGABOND | Radar de Escapadas Baratas",
@@ -14,23 +14,50 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Control de Apariencia mediante CSS nativo y adaptativo
 st.sidebar.markdown("### CONFIGURACIÓN DE ALERTAS")
 tema_elegido = st.sidebar.radio("Apariencia", ["Modo Claro ☀️", "Modo Oscuro 🌙"], index=0)
 
+# Inyección de estilos globales forzados según la opción elegida
 if tema_elegido == "Modo Oscuro 🌙":
+    bg_app = "#090D16"
+    bg_sidebar = "#111827"
     text_color = "#F1F5F9"
     sub_color = "#94A3B8"
-    accent_color = "#10B981"
+    card_bg = "#111827"
+    card_border = "#1E293B"
+    metric_bg = "#1E293B"
 else:
+    bg_app = "#FAFAFA"
+    bg_sidebar = "#FFFFFF"
     text_color = "#0F172A"
     sub_color = "#64748B"
-    accent_color = "#047857"
+    card_bg = "#FFFFFF"
+    card_border = "#E2E8F0"
+    metric_bg = "#F1F5F9"
 
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
 
+    /* Forzar fondo global y texto */
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
+        background-color: {bg_app} !important;
+        color: {text_color} !important;
+    }}
+
+    /* Forzar fondo de la barra lateral */
+    section[data-testid="stSidebar"], [data-testid="stSidebarContent"] {{
+        background-color: {bg_sidebar} !important;
+        border-right: 1px solid {card_border} !important;
+    }}
+
+    /* Ajuste de todos los textos generales */
+    p, span, div, label, h1, h2, h3, h4, h5, h6, .stMarkdown {{
+        color: {text_color} !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+    }}
+
+    /* Títulos */
     .brand-title {{
         font-family: 'Cinzel', serif !important;
         font-size: 2.3rem;
@@ -44,7 +71,16 @@ st.markdown(f"""
         color: {sub_color} !important;
         margin-bottom: 1.5rem;
     }}
-    .stButton>button {{
+
+    /* Forzar tarjetas y contenedores nativos */
+    [data-testid="stVerticalBlockBorderWrapper"] > div {{
+        background-color: {card_bg} !important;
+        border: 1px solid {card_border} !important;
+        border-radius: 12px !important;
+    }}
+
+    /* Botones de acción */
+    .stButton>button, a[data-testid="stLinkButton"] {{
         width: 100%;
         border-radius: 8px;
         font-weight: 600;
@@ -56,9 +92,7 @@ st.markdown(f"""
 # 2. MOTOR DE ALGORITMO Y BÚSQUEDA DE CHOLLOS EN TIEMPO REAL
 # -----------------------------------------------------------------------------
 def obtener_chollos_klook(destino_nombre):
-    """
-    Escanea múltiples actividades en Klook y selecciona la combinación de menor coste (el chollo de la ciudad).
-    """
+    """Escanea múltiples actividades en Klook y selecciona la opción de menor precio."""
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
         return None
@@ -75,7 +109,6 @@ def obtener_chollos_klook(destino_nombre):
         data = resp.json()
         
         if "items" in data and len(data["items"]) > 0:
-            # Ordenar por precio ascendente para encontrar la opción más barata
             items_validos = [i for i in data["items"] if "price" in i and float(i["price"]) > 0]
             if items_validos:
                 item_chollo = min(items_validos, key=lambda x: float(x["price"]))
@@ -117,7 +150,7 @@ def obtener_vuelo_google_real(origen_code, destino_code):
     return None
 
 def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre):
-    """Genera URLs funcionales y directas."""
+    """Genera URLs dinámicas directas."""
     def simplificar(t):
         r = {'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n'}
         t = t.lower()
@@ -131,7 +164,6 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre):
     fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
     fecha_vuelta = (datetime.now() + timedelta(days=16)).strftime("%Y-%m-%d")
 
-    # Enlace Transporte
     if "Avión" in tipo_transporte:
         query_vuelo = f"Vuelos de {origen_nombre} a {destino_nombre} del {fecha_ida} al {fecha_vuelta}"
         url_trans = f"https://www.google.com/travel/flights?q={urllib.parse.quote(query_vuelo)}"
@@ -140,10 +172,7 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre):
     else:
         url_trans = f"https://www.blablacar.es/search?fn={urllib.parse.quote(origen_nombre)}&tn={urllib.parse.quote(destino_nombre)}"
 
-    # Enlace Alojamiento Klook/Booking
     url_hotel = f"https://www.klook.com/es/hotels/search/?city={urllib.parse.quote(destino_nombre)}&checkIn={fecha_ida}&checkOut={fecha_vuelta}"
-
-    # Enlace Actividades Klook
     url_actividad = f"https://www.klook.com/es/search?query={urllib.parse.quote(destino_nombre)}"
 
     return url_trans, url_hotel, url_actividad
@@ -206,7 +235,7 @@ filtro_transporte = st.sidebar.multiselect(
 )
 
 # -----------------------------------------------------------------------------
-# 5. RENDERIZADO VISUAL CON TARJETAS NATIVAS DE STREAMLIT
+# 5. RENDERIZADO VISUAL CON CAMBIO DE TEMA REAL
 # -----------------------------------------------------------------------------
 st.markdown('<div class="brand-title">V A G A B O N D</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="brand-subtitle">Radar de Chollos en Escapadas Completas (<b>Viaje + Hotel + Experiencia Klook</b>) desde {origen_seleccionado}</div>', unsafe_allow_html=True)
@@ -270,7 +299,7 @@ for item in ESCAPADAS_CATALOGO:
             "url_actividad": url_act
         })
 
-# Renderizado mediante contenedores nativos limpios
+# Renderizado con tarjetas completamente adaptables al tema
 if escapadas_filtradas:
     cols = st.columns(2)
     for idx, pack in enumerate(escapadas_filtradas):
@@ -280,7 +309,6 @@ if escapadas_filtradas:
                 st.caption(f"🗓️ {pack['duracion']} • 🚆 {pack['transporte']}")
                 st.subheader(f"{pack['destino']} ({pack['pais']})")
                 
-                # Muestra clara del precio total
                 st.metric(label="Precio Total Pack Completo", value=f"{pack['precio_total']} €")
                 
                 st.markdown("---")
@@ -289,7 +317,6 @@ if escapadas_filtradas:
                 st.markdown(f"• **Chollo Klook:** {pack['actividad_nombre']} (**{pack['precio_actividad']} €**)")
                 st.markdown("---")
 
-                # Botones de enlace real clicables
                 st.link_button(f"1. Reservar Transporte ({pack['precio_transporte']}€)", pack['url_transporte'], type="primary", use_container_width=True)
                 st.link_button(f"2. Ver Hotel en Klook ({pack['precio_alojamiento']}€)", pack['url_hotel'], use_container_width=True)
                 st.link_button(f"3. Reservar Experiencia ({pack['precio_actividad']}€)", pack['url_actividad'], use_container_width=True)
