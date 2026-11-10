@@ -5,7 +5,7 @@ import httpx
 from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
-# 1. CONFIGURACIÓN DE PÁGINA Y TEMA OSCURO FIJO
+# 1. CONFIGURACIÓN DE PÁGINA Y TEMA OSCURO PERMANENTE
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="VAGABOND | Escapadas Baratas 'All-in-One'",
@@ -42,7 +42,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. CATÁLOGO BASE DE EXPLORACIÓN Y DESTINOS
+# 2. ORIGENES Y CATÁLOGO EXTENDIDO (GARANTIZA MÍNIMO 6 RESULTADOS)
 # -----------------------------------------------------------------------------
 ORIGENES_DISPONIBLES = {
     "Madrid": "MAD",
@@ -53,41 +53,70 @@ ORIGENES_DISPONIBLES = {
     "Bilbao": "BIO"
 }
 
-ESCAPADAS_CATALOGO = [
+# Catálogo amplio y diverso para garantizar rotación y al menos 6 opciones filtradas
+ESCAPADAS_CATALOGO_AMPLIADO = [
     {
         "destino": "Sofía", "pais": "Bulgaria", "transporte": "Avión Directo", "code": "SOF",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 35, 
-        "actividad_defecto": "Tour a los Monasterios de Rila", "precio_actividad_base": 15, 
+        "actividad_defecto": "Tour Monasterios de Rila", "precio_actividad_base": 15, 
         "precio_transporte_persona_base": 165,
         "imagen": "https://images.unsplash.com/photo-1573843981267-be1999ff37cd?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Varsovia", "pais": "Polonia", "transporte": "Avión Directo", "code": "WAW",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 38, 
-        "actividad_defecto": "Concierto de Chopin en el Casco Antiguo", "precio_actividad_base": 14, 
+        "actividad_defecto": "Concierto Chopin en Casco Antiguo", "precio_actividad_base": 14, 
         "precio_transporte_persona_base": 170,
         "imagen": "https://images.unsplash.com/photo-1519197924294-4ac978a3ef54?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Roma", "pais": "Italia", "transporte": "Avión Directo", "code": "FCO",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 45, 
-        "actividad_defecto": "Visita Guiada Coliseo y Foro Romano", "precio_actividad_base": 30, 
+        "actividad_defecto": "Tour Coliseo y Foro Romano", "precio_actividad_base": 30, 
         "precio_transporte_persona_base": 125,
         "imagen": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Fez", "pais": "Marruecos", "transporte": "Avión Directo", "code": "FEZ",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 25, 
-        "actividad_defecto": "Visita Guiada por la Medina Histórica", "precio_actividad_base": 12, 
+        "actividad_defecto": "Visita Guiada por la Medina", "precio_actividad_base": 12, 
         "precio_transporte_persona_base": 70,
         "imagen": "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80"
     },
     {
+        "destino": "Lisboa", "pais": "Portugal", "transporte": "Avión Directo", "code": "LIS",
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 40, 
+        "actividad_defecto": "Paseo en Barco por el Tajo", "precio_actividad_base": 18, 
+        "precio_transporte_persona_base": 85,
+        "imagen": "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?auto=format&fit=crop&w=800&q=80"
+    },
+    {
         "destino": "Oporto", "pais": "Portugal", "transporte": "Autobús Nocturno / Tren", "code": "OPO",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 32, 
-        "actividad_defecto": "Crucero de los 6 Puentes por el Duero", "precio_actividad_base": 15, 
+        "actividad_defecto": "Crucero de los 6 Puentes", "precio_actividad_base": 15, 
         "precio_transporte_persona_base": 30,
         "imagen": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "destino": "Praga", "pais": "República Checa", "transporte": "Avión Directo", "code": "PRG",
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 42, 
+        "actividad_defecto": "Visita Guiada al Castillo de Praga", "precio_actividad_base": 20, 
+        "precio_transporte_persona_base": 140,
+        "imagen": "https://images.unsplash.com/photo-1541849546-216549ae216d?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "destino": "Milán", "pais": "Italia", "transporte": "Avión Directo", "code": "MXP",
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 48, 
+        "actividad_defecto": "Entrada a las Terrazas del Duomo", "precio_actividad_base": 22, 
+        "precio_transporte_persona_base": 95,
+        "imagen": "https://images.unsplash.com/photo-1513581166391-887a96ddeafd?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "destino": "París", "pais": "Francia", "transporte": "Avión Directo", "code": "CDG",
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 55, 
+        "actividad_defecto": "Crucero por el Sena", "precio_actividad_base": 17, 
+        "precio_transporte_persona_base": 110,
+        "imagen": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Valencia", "pais": "España", "transporte": "Tren Alta Velocidad", "code": "VLC",
@@ -95,6 +124,20 @@ ESCAPADAS_CATALOGO = [
         "actividad_defecto": "Ciudad de las Artes y Ciencias", "precio_actividad_base": 24, 
         "precio_transporte_persona_base": 25,
         "imagen": "https://images.unsplash.com/photo-1590496793929-36417d3117de?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "destino": "Sevilla", "pais": "España", "transporte": "Tren Alta Velocidad", "code": "SVQ",
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 42, 
+        "actividad_defecto": "Show Flamenco en Triana", "precio_actividad_base": 20, 
+        "precio_transporte_persona_base": 35,
+        "imagen": "https://images.unsplash.com/photo-1561632669-6e0e99a2245b?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+        "destino": "Burdeos", "pais": "Francia", "transporte": "Autobús Nocturno / Tren", "code": "BOD",
+        "duracion": "3 Días / 2 Noches", "hotel_base_noche": 38, 
+        "actividad_defecto": "Cata de Vinos en Cité du Vin", "precio_actividad_base": 22, 
+        "precio_transporte_persona_base": 45,
+        "imagen": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80"
     }
 ]
 
@@ -107,13 +150,18 @@ def obtener_vuelo_ida_vuelta_medio(origen_code, destino_code, num_pasajeros, pre
     if not tp_token:
         return None, None, None
 
+    fecha_ida = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+    fecha_vuelta = (datetime.now() + timedelta(days=17)).strftime("%Y-%m-%d")
+
     try:
         url = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
         headers = {"X-Access-Token": tp_token}
         params = {
             "origin": origen_code,
             "destination": destino_code,
-            "one_way": "false",
+            "departure_at": fecha_ida,
+            "return_at": fecha_vuelta,
+            "one_way": "false",  # FORZADO IDA Y VUELTA
             "unique": "true",
             "currency": "EUR",
             "limit": 5
@@ -192,7 +240,7 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, ori
         dt_ida = datetime.now() + timedelta(days=14)
         dt_vta = datetime.now() + timedelta(days=17)
 
-    # 1. Enlace Transporte (Aviasales Ida y Vuelta u Omio)
+    # 1. Enlace Transporte (Aviasales u Omio)
     if "Avión" in tipo_transporte:
         dia_ida, mes_ida = dt_ida.strftime("%d"), dt_ida.strftime("%m")
         dia_vta, mes_vta = dt_vta.strftime("%d"), dt_vta.strftime("%m")
@@ -220,10 +268,11 @@ st.sidebar.markdown("### CONFIGURACIÓN DEL VIAJE")
 origen_seleccionado = st.sidebar.selectbox("Ciudad de Salida", list(ORIGENES_DISPONIBLES.keys()), index=0)
 codigo_origen_actual = ORIGENES_DISPONIBLES[origen_seleccionado]
 
+# Por defecto: 1 viajero
 num_viajeros = st.sidebar.number_input("Número de Viajeros 👤", min_value=1, max_value=8, value=1, step=1)
 
 st.sidebar.markdown("---")
-presupuesto_total_pack = st.sidebar.slider(f"Presupuesto MÁXIMO Pack Total ({num_viajeros} p) (€)", 100, 2000, 600, step=25)
+presupuesto_total_pack = st.sidebar.slider(f"Presupuesto MÁXIMO Pack Total ({num_viajeros} p) (€)", 100, 2000, 650, step=25)
 
 st.sidebar.markdown("---")
 filtro_transporte = st.sidebar.multiselect(
@@ -247,14 +296,15 @@ st.write("")
 
 escapadas_filtradas = []
 
-for item in ESCAPADAS_CATALOGO:
+for item in ESCAPADAS_CATALOGO_AMPLIADO:
     if item["destino"].lower() == origen_seleccionado.lower():
         continue
         
+    # Verificar si cumple los transportes filtrados por el usuario
     if not any(t in item["transporte"] for t in filtro_transporte):
         continue
 
-    # 1. Obtener precio medio de vuelos de Ida y Vuelta
+    # 1. Obtener precio de vuelo de Ida y Vuelta
     precio_transporte_total = item["precio_transporte_persona_base"] * num_viajeros
     es_live_flight = False
     f_ida_live = None
@@ -310,8 +360,10 @@ for item in ESCAPADAS_CATALOGO:
             "url_actividad": url_act
         })
 
+# Ordenar de menor a mayor precio total
 escapadas_filtradas = sorted(escapadas_filtradas, key=lambda x: x["precio_total"])
 
+# Mostrar siempre al menos los mejores 6 resultados si existen suficientes en la base filtrada
 if escapadas_filtradas:
     cols = st.columns(2)
     for idx, pack in enumerate(escapadas_filtradas):
