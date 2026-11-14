@@ -5,7 +5,7 @@ import httpx
 from datetime import datetime, timedelta
 
 # -----------------------------------------------------------------------------
-# 1. CONFIGURACIÓN DE PÁGINA Y CSS OSCURO (SIN ROMPER ICONOS DE STREAMLIT)
+# 1. CONFIGURACIÓN DE PÁGINA Y CSS OSCURO (RESPETANDO ICONOS DE STREAMLIT)
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="VAGABOND | Escapadas Baratas 'All-in-One'",
@@ -28,7 +28,6 @@ st.markdown("""
         border-right: 1px solid #1E293B !important;
     }
 
-    /* Aplicar tipografía solo a textos y títulos, respetando los iconos internos de Streamlit */
     html, body, p, label, h1, h2, h3, h4, .stMarkdown {
         color: #F8FAFC !important;
         font-family: 'Plus Jakarta Sans', sans-serif;
@@ -56,7 +55,7 @@ def obtener_fechas_escapada_fin_de_semana(semanas_adelante=2):
     return dt_ida, dt_vta
 
 # -----------------------------------------------------------------------------
-# 3. ORÍGENES Y CATÁLOGO MULTIDESTINO
+# 3. ORÍGENES Y CATÁLOGO MULTIDESTINO CALIBRADO A PRECIOS DE FIN DE SEMANA
 # -----------------------------------------------------------------------------
 ORIGENES_DISPONIBLES = {
     "Madrid": {"code": "MAD", "factor_precio": 1.0},
@@ -72,95 +71,96 @@ ESCAPADAS_CATALOGO_AMPLIADO = [
         "destino": "Sofía", "pais": "Bulgaria", "transporte": "Avión Directo", "code": "SOF",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 35, 
         "actividad_defecto": "Tour Monasterios de Rila", "precio_actividad_base": 15, 
-        "precio_transporte_persona_base": 155,
+        "precio_transporte_persona_base": 165,
         "imagen": "https://images.unsplash.com/photo-1573843981267-be1999ff37cd?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Varsovia", "pais": "Polonia", "transporte": "Avión Directo", "code": "WAW",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 38, 
         "actividad_defecto": "Concierto Chopin en Casco Antiguo", "precio_actividad_base": 14, 
-        "precio_transporte_persona_base": 165,
+        "precio_transporte_persona_base": 175,
         "imagen": "https://images.unsplash.com/photo-1519197924294-4ac978a3ef54?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Roma", "pais": "Italia", "transporte": "Avión Directo", "code": "FCO",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 45, 
         "actividad_defecto": "Tour Coliseo y Foro Romano", "precio_actividad_base": 30, 
-        "precio_transporte_persona_base": 120,
+        "precio_transporte_persona_base": 135,
         "imagen": "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Fez", "pais": "Marruecos", "transporte": "Avión Directo", "code": "FEZ",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 25, 
         "actividad_defecto": "Visita Guiada por la Medina", "precio_actividad_base": 12, 
-        "precio_transporte_persona_base": 95,
+        "precio_transporte_persona_base": 145,
         "imagen": "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Lisboa", "pais": "Portugal", "transporte": "Avión Directo", "code": "LIS",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 40, 
         "actividad_defecto": "Paseo en Barco por el Tajo", "precio_actividad_base": 18, 
-        "precio_transporte_persona_base": 85,
+        "precio_transporte_persona_base": 110,
         "imagen": "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Oporto", "pais": "Portugal", "transporte": "Autobús Nocturno / Tren", "code": "OPO",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 32, 
         "actividad_defecto": "Crucero de los 6 Puentes", "precio_actividad_base": 15, 
-        "precio_transporte_persona_base": 30,
+        "precio_transporte_persona_base": 35,
         "imagen": "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Praga", "pais": "República Checa", "transporte": "Avión Directo", "code": "PRG",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 42, 
         "actividad_defecto": "Visita Guiada al Castillo de Praga", "precio_actividad_base": 20, 
-        "precio_transporte_persona_base": 135,
+        "precio_transporte_persona_base": 150,
         "imagen": "https://images.unsplash.com/photo-1541849546-216549ae216d?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Milán", "pais": "Italia", "transporte": "Avión Directo", "code": "MXP",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 48, 
         "actividad_defecto": "Entrada a las Terrazas del Duomo", "precio_actividad_base": 22, 
-        "precio_transporte_persona_base": 90,
+        "precio_transporte_persona_base": 115,
         "imagen": "https://images.unsplash.com/photo-1513581166391-887a96ddeafd?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "París", "pais": "Francia", "transporte": "Avión Directo", "code": "CDG",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 55, 
         "actividad_defecto": "Crucero por el Sena", "precio_actividad_base": 17, 
-        "precio_transporte_persona_base": 115,
+        "precio_transporte_persona_base": 130,
         "imagen": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Valencia", "pais": "España", "transporte": "Tren Alta Velocidad", "code": "VLC",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 40, 
         "actividad_defecto": "Ciudad de las Artes y Ciencias", "precio_actividad_base": 24, 
-        "precio_transporte_persona_base": 25,
+        "precio_transporte_persona_base": 35,
         "imagen": "https://images.unsplash.com/photo-1590496793929-36417d3117de?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Sevilla", "pais": "España", "transporte": "Tren Alta Velocidad", "code": "SVQ",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 42, 
         "actividad_defecto": "Show Flamenco en Triana", "precio_actividad_base": 20, 
-        "precio_transporte_persona_base": 35,
+        "precio_transporte_persona_base": 45,
         "imagen": "https://images.unsplash.com/photo-1561632669-6e0e99a2245b?auto=format&fit=crop&w=800&q=80"
     },
     {
         "destino": "Burdeos", "pais": "Francia", "transporte": "Autobús Nocturno / Tren", "code": "BOD",
         "duracion": "3 Días / 2 Noches", "hotel_base_noche": 38, 
         "actividad_defecto": "Cata de Vinos en Cité du Vin", "precio_actividad_base": 22, 
-        "precio_transporte_persona_base": 45,
+        "precio_transporte_persona_base": 50,
         "imagen": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80"
     }
 ]
 
 # -----------------------------------------------------------------------------
-# 4. CONSULTA DE PRECIOS DE VUELOS POR RUTA Y MES (EUR)
+# 4. CONSULTA DE PRECIOS DE VUELOS POR RUTA (EUR) CON DOBLE FALLBACK
 # -----------------------------------------------------------------------------
 def consultar_vuelo_ruta_eur(origen_code, destino_code, fecha_ida_str, fecha_vuelta_str):
     """
-    Consulta Travelpayouts en EUR para la ruta específica. 
-    Primero busca el fin de semana exacto; si la caché está vacía, consulta la media del mes.
+    Consulta Travelpayouts en EUR para la ruta específica.
+    1) Busca fin de semana exacto en v3/prices_for_dates.
+    2) Si no hay caché para ese día, consulta v1/prices/cheap para obtener la tarifa real ida/vuelta.
     """
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
     if not tp_token:
@@ -170,7 +170,7 @@ def consultar_vuelo_ruta_eur(origen_code, destino_code, fecha_ida_str, fecha_vue
     
     # Intento 1: Fin de semana exacto (Ida y Vuelta)
     try:
-        url_exacta = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
+        url_v3 = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
         params = {
             "origin": origen_code,
             "destination": destino_code,
@@ -180,32 +180,32 @@ def consultar_vuelo_ruta_eur(origen_code, destino_code, fecha_ida_str, fecha_vue
             "currency": "eur",
             "limit": 5
         }
-        resp = httpx.get(url_exacta, headers=headers, params=params, timeout=4.0)
+        resp = httpx.get(url_v3, headers=headers, params=params, timeout=4.0)
         data = resp.json()
         if data.get("success") and data.get("data"):
-            precios = [float(x["price"]) for x in data["data"] if float(x.get("price", 0)) >= 45]
+            precios = [float(x["price"]) for x in data["data"] if float(x.get("price", 0)) >= 55]
             if precios:
                 return sum(precios) / len(precios)
     except Exception:
         pass
 
-    # Intento 2: Media del mes en curso para esa ruta (Ida y Vuelta)
+    # Intento 2: Tarifas registradas en v1/prices/cheap para el mes de salida
     try:
-        url_mes = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
-        params_mes = {
+        url_v1 = "https://api.travelpayouts.com/v1/prices/cheap"
+        params_v1 = {
             "origin": origen_code,
             "destination": destino_code,
-            "departure_at": fecha_ida_str[:7],  # YYYY-MM
-            "one_way": "false",
-            "currency": "eur",
-            "limit": 10
+            "depart_date": fecha_ida_str[:7],
+            "return_date": fecha_vuelta_str[:7],
+            "currency": "eur"
         }
-        resp_m = httpx.get(url_mes, headers=headers, params=params_mes, timeout=4.0)
-        data_m = resp_m.json()
-        if data_m.get("success") and data_m.get("data"):
-            precios_m = [float(x["price"]) for x in data_m["data"] if float(x.get("price", 0)) >= 45]
-            if precios_m:
-                return sum(precios_m) / len(precios_m)
+        resp_1 = httpx.get(url_v1, headers=headers, params=params_v1, timeout=4.0)
+        data_1 = resp_1.json()
+        if data_1.get("success") and "data" in data_1 and destino_code in data_1["data"]:
+            ofertas = data_1["data"][destino_code]
+            precios_1 = [float(v["price"]) for v in ofertas.values() if isinstance(v, dict) and float(v.get("price", 0)) >= 55]
+            if precios_1:
+                return sum(precios_1) / len(precios_1)
     except Exception:
         pass
 
@@ -254,7 +254,7 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, ori
     origen_slug = simplificar(origen_nombre)
     destino_slug = simplificar(destino_nombre)
 
-    # 1. Enlace Transporte en EUROS (aviasales.es + ?currency=eur)
+    # 1. Enlace Transporte en EUROS
     if "Avión" in tipo_transporte:
         dia_ida, mes_ida = dt_ida.strftime("%d"), dt_ida.strftime("%m")
         dia_vta, mes_vta = dt_vta.strftime("%d"), dt_vta.strftime("%m")
@@ -324,7 +324,7 @@ for item in ESCAPADAS_CATALOGO_AMPLIADO:
     if not any(t in item["transporte"] for t in filtro_transporte):
         continue
 
-    # 1. Cálculo de vuelo Ida y Vuelta en EUR
+    # 1. Cálculo de transporte Ida y Vuelta en EUR
     precio_referencia_ajustado = item["precio_transporte_persona_base"] * factor_origen
     precio_persona_final = precio_referencia_ajustado
     es_dato_api = False
@@ -362,6 +362,14 @@ for item in ESCAPADAS_CATALOGO_AMPLIADO:
             item["transporte"], origen_seleccionado, item["destino"], codigo_origen_actual, item["code"], num_viajeros, dt_ida, dt_vta, url_klook_api
         )
 
+        # Etiqueta dinámica según el medio de transporte
+        if "Avión" in item["transporte"]:
+            etiqueta_boton_transporte = f"1. Ver Vuelo en Vivo ({dt_ida.strftime('%d/%m')}-{dt_vta.strftime('%d/%m')}) • {precio_transporte_total}€"
+        elif "Autobús" in item["transporte"]:
+            etiqueta_boton_transporte = f"1. Ver Tren / Bus ({dt_ida.strftime('%d/%m')}-{dt_vta.strftime('%d/%m')}) • {precio_transporte_total}€"
+        else:
+            etiqueta_boton_transporte = f"1. Ver Tren ({dt_ida.strftime('%d/%m')}-{dt_vta.strftime('%d/%m')}) • {precio_transporte_total}€"
+
         escapadas_filtradas.append({
             "destino": item["destino"],
             "pais": item["pais"],
@@ -374,6 +382,7 @@ for item in ESCAPADAS_CATALOGO_AMPLIADO:
             "precio_actividad": precio_actividad_total,
             "precio_total": precio_total_pack,
             "es_live": es_dato_api,
+            "etiqueta_boton": etiqueta_boton_transporte,
             "url_transporte": url_trans,
             "url_hotel": url_hotel,
             "url_actividad": url_act
@@ -404,7 +413,7 @@ if escapadas_filtradas:
                 st.divider()
 
                 st.link_button(
-                    f"1. Ver Vuelo en Vivo ({dt_ida.strftime('%d/%m')}-{dt_vta.strftime('%d/%m')}) • {pack['precio_transporte']}€", 
+                    pack["etiqueta_boton"], 
                     pack["url_transporte"], 
                     type="primary", 
                     use_container_width=True
