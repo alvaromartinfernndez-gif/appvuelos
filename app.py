@@ -42,7 +42,20 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. ORÍGENES, FACTOR DE CONECTIVIDAD Y CATÁLOGO MULTIDESTINO
+# 2. CÁLCULO DE FECHAS REALES DE ESCAPADA (VIERNES A DOMINGO)
+# -----------------------------------------------------------------------------
+def obtener_fechas_escapada_fin_de_semana(semanas_adelante=2):
+    """Calcula el próximo viernes y domingo exactos para sincronizar API y enlace."""
+    hoy = datetime.now()
+    dias_hasta_viernes = (4 - hoy.weekday()) % 7
+    if dias_hasta_viernes == 0:
+        dias_hasta_viernes = 7
+    dt_ida = hoy + timedelta(days=dias_hasta_viernes + (7 * (semanas_adelante - 1)))
+    dt_vta = dt_ida + timedelta(days=2)  # Regreso el domingo (3 días / 2 noches)
+    return dt_ida, dt_vta
+
+# -----------------------------------------------------------------------------
+# 3. ORÍGENES Y CATÁLOGO MULTIDESTINO
 # -----------------------------------------------------------------------------
 ORIGENES_DISPONIBLES = {
     "Madrid": {"code": "MAD", "factor_precio": 1.0},
@@ -141,50 +154,55 @@ ESCAPADAS_CATALOGO_AMPLIADO = [
 ]
 
 # -----------------------------------------------------------------------------
-# 3. MOTORES DE PRECIOS REALES EN LOTE (SIN RALENTIZAR LA APP)
+# 4. CONSULTA SINCRÓNICA POR FECHAS EXACTAS DE ESCAPADA
 # -----------------------------------------------------------------------------
-@st.cache_data(ttl=1800)
-def obtener_mapa_vuelos_reales_origen(origen_code):
+def consultar_vuelos_fin_de_semana(origen_code, fecha_ida_str, fecha_vuelta_str):
     """
-    Descarga en una única llamada todas las tarifas reales de Ida y Vuelta 
-    registradas en las últimas 48h desde el origen seleccionado.
+    Consulta Travelpayouts v3 específicamente para el fin de semana seleccionado.
+    Devuelve un diccionario {destino_code: precio_ida_vuelta} y el estado de la API.
     """
     tp_token = st.secrets.get("TRAVELPAYOUTS_KEY", None)
-    mapa_precios = {}
+    resultados = {}
+    estado_api = "Sin clave API configurada"
+
     if not tp_token:
-        return mapa_precios
+        return resultados, estado_api
 
     try:
-        url = "https://api.travelpayouts.com/v2/prices/latest"
+        url = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
         headers = {"X-Access-Token": tp_token}
         params = {
             "origin": origen_code,
-            "currency": "EUR",
-            "period_type": "year",
-            "one_way": "false",       # ÚNICAMENTE IDA Y VUELTA
+            "departure_at": fecha_ida_str,
+            "return_at": fecha_vuelta_str,
+            "one_way": "false",
+            "unique": "true",
             "sorting": "price",
-            "limit": 100
+            "currency": "EUR",
+            "limit": 50
         }
-        resp = httpx.get(url, headers=headers, params=params, timeout=6.0)
+        resp = httpx.get(url, headers=headers, params=params, timeout=7.0)
+        
+        if resp.status_code != 200:
+            return resultados, f"Error HTTP {resp.status_code} de Travelpayouts"
+            
         data = resp.json()
-
         if data.get("success") and "data" in data:
-            for item in data["data"]:
+            items = data["data"]
+            estado_api = f"OK ({len(items)} tarifas de caché encontradas para esas fechas)"
+            for item in items:
                 dest = item.get("destination")
-                precio = float(item.get("value", 0))
-                if dest and precio > 0:
-                    # Guardamos la tarifa media si hay varias entradas para el mismo destino
-                    if dest in mapa_precios:
-                        mapa_precios[dest]["precios"].append(precio)
-                    else:
-                        mapa_precios[dest] = {
-                            "precios": [precio],
-                            "depart_date": item.get("depart_date", "")[:10],
-                            "return_date": item.get("return_date", "")[:10]
-                        }
-    except Exception:
-        pass
-    return mapa_precios
+                precio = float(item.get("price", 0))
+                # Solo aceptamos tarifas realistas de ida y vuelta (> 45€)
+                if dest and precio >= 45:
+                    if dest not in resultados or precio < resultados[dest]:
+                        resultados[dest] = precio
+        else:
+            estado_api = f"Respuesta vacía de API: {data.get('error', 'Sin datos')}"
+    except Exception as e:
+        estado_api = f"Error de conexión: {str(e)}"
+
+    return resultados, estado_api
 
 @st.cache_data(ttl=3600)
 def obtener_chollos_klook_live(destino_nombre):
@@ -217,8 +235,8 @@ def obtener_chollos_klook_live(destino_nombre):
         pass
     return None
 
-def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, origen_code, destino_code, num_pasajeros, f_ida_api=None, f_vta_api=None, url_klook_actividad_api=None):
-    """Genera URLs dinámicas directas sincronizadas con fechas y pasajeros."""
+def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, origen_code, destino_code, num_pasajeros, dt_ida, dt_vta, url_klook_actividad_api=None):
+    """Genera URLs dinámicas directas sincronizadas con el fin de semana exacto."""
     def simplificar(t):
         r = {'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n'}
         t = t.lower()
@@ -229,21 +247,7 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, ori
     origen_slug = simplificar(origen_nombre)
     destino_slug = simplificar(destino_nombre)
 
-    if f_ida_api and f_vta_api:
-        try:
-            dt_ida = datetime.strptime(f_ida_api, "%Y-%m-%d")
-            dt_vta = datetime.strptime(f_vta_api, "%Y-%m-%d")
-            # Asegurar que las fechas devueltas estén en el futuro
-            if dt_ida < datetime.now():
-                raise ValueError("Fecha pasada")
-        except Exception:
-            dt_ida = datetime.now() + timedelta(days=14)
-            dt_vta = datetime.now() + timedelta(days=17)
-    else:
-        dt_ida = datetime.now() + timedelta(days=14)
-        dt_vta = datetime.now() + timedelta(days=17)
-
-    # 1. Enlace Transporte
+    # 1. Enlace Transporte sincronizado con dt_ida y dt_vta
     if "Avión" in tipo_transporte:
         dia_ida, mes_ida = dt_ida.strftime("%d"), dt_ida.strftime("%m")
         dia_vta, mes_vta = dt_vta.strftime("%d"), dt_vta.strftime("%m")
@@ -265,7 +269,7 @@ def generar_enlaces_escapada(tipo_transporte, origen_nombre, destino_nombre, ori
     return url_trans, url_hotel, url_actividad
 
 # -----------------------------------------------------------------------------
-# 4. BARRA LATERAL (CONTROLES)
+# 5. BARRA LATERAL (CONTROLES)
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("### CONFIGURACIÓN DEL VIAJE")
 origen_seleccionado = st.sidebar.selectbox("Ciudad de Salida", list(ORIGENES_DISPONIBLES.keys()), index=0)
@@ -273,8 +277,13 @@ datos_origen = ORIGENES_DISPONIBLES[origen_seleccionado]
 codigo_origen_actual = datos_origen["code"]
 factor_origen = datos_origen["factor_precio"]
 
-# Por defecto: 1 viajero
 num_viajeros = st.sidebar.number_input("Número de Viajeros 👤", min_value=1, max_value=8, value=1, step=1)
+
+semanas_antelacion = st.sidebar.slider("Antelación de la escapada (semanas)", 1, 8, 2)
+dt_ida, dt_vta = obtener_fechas_escapada_fin_de_semana(semanas_antelacion)
+fecha_ida_str = dt_ida.strftime("%Y-%m-%d")
+fecha_vta_str = dt_vta.strftime("%Y-%m-%d")
+st.sidebar.caption(f"📅 Fin de semana: **{dt_ida.strftime('%d/%m/%Y')}** al **{dt_vta.strftime('%d/%m/%Y')}**")
 
 st.sidebar.markdown("---")
 presupuesto_total_pack = st.sidebar.slider(f"Presupuesto MÁXIMO Pack Total ({num_viajeros} p) (€)", 100, 2000, 650, step=25)
@@ -287,20 +296,21 @@ filtro_transporte = st.sidebar.multiselect(
 )
 
 # -----------------------------------------------------------------------------
-# 5. RENDERIZADO PRINCIPAL
+# 6. RENDERIZADO PRINCIPAL
 # -----------------------------------------------------------------------------
 st.title("V A G A B O N D")
-st.caption(f"Radar de Escapadas 'All-in-One' (Ida y Vuelta) desde {origen_seleccionado}")
+st.caption(f"Escapadas Fin de Semana ({dt_ida.strftime('%d %b')} - {dt_vta.strftime('%d %b')}) desde {origen_seleccionado}")
 
 tp_activa = "TRAVELPAYOUTS_KEY" in st.secrets
+mapa_vuelos_live, estado_api = consultar_vuelos_fin_de_semana(codigo_origen_actual, fecha_ida_str, fecha_vta_str)
 
 if tp_activa:
-    st.success(f"🟢 API Travelpayouts Conectada: Sincronización de rutas desde {origen_seleccionado} ({codigo_origen_actual}) para {num_viajeros} viajero(s)")
+    with st.expander(f"🟢 Estado del Motor Travelpayouts ({codigo_origen_actual}) — Clic para ver diagnóstico", expanded=False):
+        st.write(f"**Estado de conexión:** {estado_api}")
+        st.write(f"**Rutas con tarifa válida en caché para {fecha_ida_str} → {fecha_vta_str}:** {mapa_vuelos_live if mapa_vuelos_live else 'Ninguna (usando estimación de mercado)'}")
+        st.info("Nota: La API gratuita de Travelpayouts solo devuelve precios de rutas que otros usuarios hayan buscado recientemente para esas fechas exactas. Al pulsar 'Reservar', Aviasales ejecuta la búsqueda en vivo.")
 
 st.write("")
-
-# Obtener mapa de precios reales en una sola consulta rápida
-mapa_vuelos_live = obtener_mapa_vuelos_reales_origen(codigo_origen_actual) if tp_activa else {}
 
 escapadas_filtradas = []
 
@@ -311,27 +321,17 @@ for item in ESCAPADAS_CATALOGO_AMPLIADO:
     if not any(t in item["transporte"] for t in filtro_transporte):
         continue
 
-    # 1. Cálculo realista de vuelo Ida y Vuelta según origen
+    # 1. Cálculo de vuelo Ida y Vuelta
     precio_referencia_ajustado = item["precio_transporte_persona_base"] * factor_origen
     precio_persona_final = precio_referencia_ajustado
     es_dato_api = False
-    f_ida_api = None
-    f_vta_api = None
 
     if "Avión" in item["transporte"] and item["code"] in mapa_vuelos_live:
-        info_ruta = mapa_vuelos_live[item["code"]]
-        lista_precios = info_ruta["precios"]
-        # Filtrar precios reales de ida y vuelta descartando errores de caché
-        precios_validos = [
-            p for p in lista_precios 
-            if (precio_referencia_ajustado * 0.60) <= p <= (precio_referencia_ajustado * 1.65)
-        ]
-        if precios_validos:
-            # Promedio de los precios reales encontrados para esa ruta
-            precio_persona_final = sum(precios_validos) / len(precios_validos)
+        precio_api = mapa_vuelos_live[item["code"]]
+        # Validar que el precio de la API sea coherente con un ida y vuelta real
+        if (precio_referencia_ajustado * 0.55) <= precio_api <= (precio_referencia_ajustado * 1.8):
+            precio_persona_final = precio_api
             es_dato_api = True
-            f_ida_api = info_ruta["depart_date"]
-            f_vta_api = info_ruta["return_date"]
 
     precio_transporte_total = int(round(precio_persona_final * num_viajeros))
 
@@ -357,7 +357,7 @@ for item in ESCAPADAS_CATALOGO_AMPLIADO:
 
     if precio_total_pack <= presupuesto_total_pack:
         url_trans, url_hotel, url_act = generar_enlaces_escapada(
-            item["transporte"], origen_seleccionado, item["destino"], codigo_origen_actual, item["code"], num_viajeros, f_ida_api, f_vta_api, url_klook_api
+            item["transporte"], origen_seleccionado, item["destino"], codigo_origen_actual, item["code"], num_viajeros, dt_ida, dt_vta, url_klook_api
         )
 
         escapadas_filtradas.append({
@@ -377,7 +377,6 @@ for item in ESCAPADAS_CATALOGO_AMPLIADO:
             "url_actividad": url_act
         })
 
-# Ordenar de menor a mayor precio total
 escapadas_filtradas = sorted(escapadas_filtradas, key=lambda x: x["precio_total"])
 
 if escapadas_filtradas:
@@ -388,8 +387,8 @@ if escapadas_filtradas:
             with st.container(border=True):
                 st.image(pack["imagen"], use_container_width=True)
                 
-                etiqueta_origen = " • Tarifa Live Ruta" if pack["es_live"] else f" • Estimación desde {origen_seleccionado}"
-                st.caption(f"{pack['duracion']} • {pack['transporte']} (Ida y Vuelta){etiqueta_origen}")
+                etiqueta_origen = " • Tarifa API Cacheada" if pack["es_live"] else f" • Media Fin de Semana ({origen_seleccionado})"
+                st.caption(f"{pack['duracion']} • {pack['transporte']}{etiqueta_origen}")
                 st.subheader(f"{pack['destino']}, {pack['pais']}")
                 
                 st.metric(label=f"Precio Pack Total ({num_viajeros} viajero/s)", value=f"{pack['precio_total']} €")
@@ -403,7 +402,7 @@ if escapadas_filtradas:
                 st.divider()
 
                 st.link_button(
-                    f"1. Reservar {pack['transporte']} ({pack['precio_transporte']}€)", 
+                    f"1. Ver Vuelo en Vivo ({dt_ida.strftime('%d/%m')}-{dt_vta.strftime('%d/%m')}) • Est. {pack['precio_transporte']}€", 
                     pack["url_transporte"], 
                     type="primary", 
                     use_container_width=True
